@@ -1,9 +1,21 @@
+"use client";
+
+import Link from "next/link";
+import { use, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
 type ResultPageProps = {
   params: Promise<{
     id: string;
   }>;
+};
+
+type Transformation = {
+  id: string;
+  original_image_url: string;
+  generated_image_url: string | null;
+  glow_up_level: string;
+  status: string;
 };
 
 const glowUpLabels: Record<string, string> = {
@@ -13,29 +25,81 @@ const glowUpLabels: Record<string, string> = {
   shredded: "Shredded",
 };
 
-export default async function ResultPage({ params }: ResultPageProps) {
-  const { id } = await params;
+export default function ResultPage({ params }: ResultPageProps) {
+  const { id } = use(params);
 
-  const { data, error } = await supabase
-    .from("transformations")
-    .select("*")
-    .eq("id", id)
-    .single();
+  const [data, setData] = useState<Transformation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  if (error || !data) {
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchTransformation = async () => {
+      const { data: transformation, error } = await supabase
+        .from("transformations")
+        .select("id, original_image_url, generated_image_url, glow_up_level, status")
+        .eq("id", id)
+        .single();
+
+      if (!isMounted) return;
+
+      if (error || !transformation) {
+        setNotFound(true);
+        setLoading(false);
+        return;
+      }
+
+      setData(transformation);
+      setLoading(false);
+    };
+
+    void fetchTransformation();
+
+    const interval = setInterval(() => {
+      void fetchTransformation();
+    }, 3000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [id]);
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-white px-6 py-12 text-black">
+        <div className="mx-auto max-w-2xl">
+          <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
+            GlownUp
+          </p>
+          <h1 className="text-3xl font-semibold">Loading your transformation...</h1>
+        </div>
+      </main>
+    );
+  }
+
+  if (notFound || !data) {
     return (
       <main className="min-h-screen bg-white px-6 py-12 text-black">
         <div className="mx-auto max-w-2xl">
           <h1 className="text-3xl font-semibold">Result not found</h1>
           <p className="mt-3 text-gray-600">
-            We couldn’t find that transformation.
+            We couldn&apos;t find that transformation.
           </p>
+          <Link
+            href="/upload"
+            className="mt-6 inline-flex rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Try another
+          </Link>
         </div>
       </main>
     );
   }
 
   const glowUpLabel = glowUpLabels[data.glow_up_level] || data.glow_up_level;
+  const isGenerating = data.status === "pending" || data.status === "generating";
 
   return (
     <main className="min-h-screen bg-white px-6 py-12 text-black">
@@ -47,7 +111,7 @@ export default async function ResultPage({ params }: ResultPageProps) {
         <h1 className="text-4xl font-semibold tracking-tight">Your transformation</h1>
 
         <p className="mt-3 text-base text-gray-600">
-          Status: <span className="font-medium text-black">{data.status}</span>
+          Status: <span className="font-medium capitalize text-black">{data.status}</span>
         </p>
 
         <p className="mt-1 text-base text-gray-600">
@@ -74,8 +138,30 @@ export default async function ResultPage({ params }: ResultPageProps) {
             />
           ) : (
             <div className="rounded-2xl bg-gray-50 p-8 text-gray-600">
-              Your glow-up is not generated yet. This page is ready for the AI step next.
+              {isGenerating
+                ? "Your transformation is being generated. This page refreshes automatically every few seconds."
+                : "Your transformation is not available yet."}
             </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/upload"
+            className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+          >
+            Try another
+          </Link>
+
+          {data.generated_image_url && (
+            <a
+              href={data.generated_image_url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+            >
+              Open result image
+            </a>
           )}
         </div>
       </div>

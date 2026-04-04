@@ -7,21 +7,25 @@ const replicate = new Replicate({
 });
 
 const glowUpPromptMap: Record<string, string> = {
-    average:
-      "Create a realistic version of this same person at roughly 20% body fat with a healthy physique, subtle improvements only, natural lighting, same identity, photorealistic.",
-    fit:
-      "Create a realistic version of this same person at roughly 16% body fat with an athletic physique, mild muscle definition, natural lighting, same identity, photorealistic.",
-    lean:
-      "Create a realistic version of this same person at roughly 12% body fat with visible muscle definition, lean athletic build, natural lighting, same identity, photorealistic.",
-    shredded:
-      "Create a realistic version of this same person at roughly 8 to 10% body fat with strong muscle definition and a very lean athletic physique, natural lighting, same identity, photorealistic.",
-  };
+  average:
+    "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make only subtle physique improvements so the person looks healthy and slightly more in shape, roughly around 20% body fat. Keep the result photorealistic and natural.",
+  fit:
+    "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Reduce body fat modestly and add mild athletic muscle definition so the person looks fit, roughly around 16% body fat. Keep the result photorealistic and natural.",
+  lean:
+    "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make the physique leaner with visible but realistic muscle definition so the person looks athletic, roughly around 12% body fat. Keep the result photorealistic and natural.",
+  shredded:
+    "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make the physique very lean with strong but realistic muscle definition so the person looks shredded, roughly around 8 to 10% body fat. Keep the result photorealistic and natural.",
+};
 
 export async function POST(req: Request) {
+  let currentTransformationId: string | undefined;
+
   try {
     const { transformationId } = await req.json();
+    currentTransformationId =
+      typeof transformationId === "string" ? transformationId : undefined;
 
-    if (!transformationId) {
+    if (!currentTransformationId) {
       return NextResponse.json(
         { error: "Missing transformationId" },
         { status: 400 }
@@ -31,7 +35,7 @@ export async function POST(req: Request) {
     const { data: transformation, error: fetchError } = await supabase
       .from("transformations")
       .select("*")
-      .eq("id", transformationId)
+      .eq("id", currentTransformationId)
       .single();
 
     if (fetchError || !transformation) {
@@ -41,35 +45,72 @@ export async function POST(req: Request) {
       );
     }
 
-    const prompt =
-      glowUpPromptMap[transformation.glow_up_level] ??
-      glowUpPromptMap.lean;
+    if (transformation.status === "completed") {
+      return NextResponse.json({ message: "Already generated" });
+    }
 
-    // You may swap this model later after testing.
+    if (transformation.status === "generating") {
+      return NextResponse.json({ message: "Already generating" });
+    }
+
+    const { error: generatingError } = await supabase
+      .from("transformations")
+      .update({ status: "generating", error_message: null })
+      .eq("id", currentTransformationId);
+
+    if (generatingError) {
+      throw generatingError;
+    }
+
+    const prompt =
+      glowUpPromptMap[transformation.glow_up_level] ?? glowUpPromptMap.lean;
+
     const output = await replicate.run(
-      "black-forest-labs/flux-schnell",
+      "black-forest-labs/flux-kontext-dev",
       {
         input: {
-          prompt: `${prompt} Use the uploaded image as the subject reference.`,
+          prompt,
           input_image: transformation.original_image_url,
-          aspect_ratio: "1:1",
+          aspect_ratio: "match_input_image",
           output_format: "jpg",
           output_quality: 90,
+          guidance: 2.5,
+          num_inference_steps: 30,
         },
       }
     );
 
     let generatedImageUrl = "";
 
-    if (Array.isArray(output) && output.length > 0) {
-      generatedImageUrl = String(output[0]);
-    } else if (typeof output === "string") {
+    if (typeof output === "string") {
       generatedImageUrl = output;
+    } else if (Array.isArray(output) && output.length > 0) {
+      const first = output[0] as unknown;
+    
+      if (typeof first === "string") {
+        generatedImageUrl = first;
+      } else if (
+        typeof first === "object" &&
+        first !== null &&
+        "url" in first &&
+        typeof (first as { url?: unknown }).url === "function"
+      ) {
+        generatedImageUrl = String(await (first as { url: () => Promise<string> }).url());
+      } else {
+        generatedImageUrl = String(first);
+      }
+    } else if (
+      typeof output === "object" &&
+      output !== null &&
+      "url" in output &&
+      typeof (output as { url?: unknown }).url === "function"
+    ) {
+      generatedImageUrl = String(await (output as { url: () => Promise<string> }).url());
     } else {
+      console.error("Unexpected Replicate output:", output);
       throw new Error("No generated image returned from Replicate");
     }
 
-    // download generated image and re-store in Supabase
     const imageResponse = await fetch(generatedImageUrl);
     if (!imageResponse.ok) {
       throw new Error("Failed to fetch generated image");
@@ -102,7 +143,7 @@ export async function POST(req: Request) {
         status: "completed",
         error_message: null,
       })
-      .eq("id", transformationId);
+      .eq("id", currentTransformationId);
 
     if (updateError) {
       throw updateError;
@@ -118,9 +159,13 @@ export async function POST(req: Request) {
     const message =
       error instanceof Error ? error.message : "Unknown error";
 
-    return NextResponse.json(
-      { error: message },
-      { status: 500 }
-    );
+    if (currentTransformationId) {
+      await supabase
+        .from("transformations")
+        .update({ status: "failed", error_message: message })
+        .eq("id", currentTransformationId);
+    }
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -84,7 +84,7 @@ export default function UploadPage() {
         throw insertError;
       }
 
-      await fetch("/api/generate", {
+      void fetch("/api/generate", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -92,8 +92,10 @@ export default function UploadPage() {
         body: JSON.stringify({
           transformationId: insertData.id,
         }),
+      }).catch((generationError) => {
+        console.error("Generation request failed:", generationError);
       });
-      
+
       router.push(`/result/${insertData.id}`);
     } catch (error) {
       console.error(error);
@@ -112,7 +114,7 @@ export default function UploadPage() {
           </p>
           <h1 className="text-4xl font-semibold tracking-tight">Upload your photo</h1>
           <p className="mt-3 text-base text-gray-600">
-            Choose your glow-up level and test the full upload flow.
+            Choose your glow-up level, upload a photo, and we&apos;ll start generating your transformation right away.
           </p>
         </div>
 
