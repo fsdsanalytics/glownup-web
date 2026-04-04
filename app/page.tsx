@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-white text-black">
@@ -15,12 +17,18 @@ export default function Home() {
         </p>
 
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-          <button className="rounded-full bg-black px-6 py-3 text-white transition hover:bg-gray-800">
+          <Link
+            href="/upload"
+            className="rounded-full bg-black px-6 py-3 text-white transition hover:bg-gray-800"
+          >
             Try GlownUp
-          </button>
-          <button className="rounded-full border border-gray-300 px-6 py-3 text-black transition hover:bg-gray-100">
+          </Link>
+          <Link
+            href="/upload"
+            className="rounded-full border border-gray-300 px-6 py-3 text-black transition hover:bg-gray-100"
+          >
             See Example
-          </button>
+          </Link>
         </div>
       </section>
     </main>

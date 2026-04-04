@@ -84,6 +84,16 @@ export default function UploadPage() {
         throw insertError;
       }
 
+      await fetch("/api/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          transformationId: insertData.id,
+        }),
+      });
+      
       router.push(`/result/${insertData.id}`);
     } catch (error) {
       console.error(error);
