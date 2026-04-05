@@ -106,8 +106,8 @@ export default function UploadPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white px-6 py-12 text-black">
-      <div className="mx-auto max-w-xl">
+    <main className="bg-white px-6 py-12 text-black">
+      <div className="mx-auto max-w-xl pt-12">
         <div className="mb-8">
           <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
             GlownUp
@@ -173,8 +173,17 @@ export default function UploadPage() {
           >
             {uploading ? "Uploading..." : "Generate my glow-up"}
           </button>
+          <p className="mt-4 text-center text-xs text-gray-500">
+            Images are processed using AI to generate simulated physique transformations.
+          </p>
+          <p className="mt-2 text-center text-xs text-gray-500">
+            By uploading a photo, you confirm you are 18+ and have the right to use the image.
+          </p>
 
           {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
+          <p className="mt-6 text-center text-xs text-gray-500">
+            Contact: fsdsanalytics@gmail.com
+          </p>
         </div>
       </div>
     </main>

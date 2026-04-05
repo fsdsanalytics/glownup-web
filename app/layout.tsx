@@ -27,7 +27,31 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-screen flex flex-col">
+        <main className="flex-1">{children}</main>
+
+        <footer className="mt-auto border-t border-gray-200 py-6 text-center text-sm text-gray-500">
+          <p>© 2026 GlownUp</p>
+
+          <div className="mt-2 flex justify-center gap-4">
+            <a href="/" className="hover:text-black">
+              Home
+            </a>
+
+            <a href="/privacy" className="hover:text-black">
+              Privacy
+            </a>
+
+            <a href="/terms" className="hover:text-black">
+              Terms
+            </a>
+
+            <a href="mailto:fsdsanalytics@gmail.com" className="hover:text-black">
+              Contact
+            </a>
+          </div>
+        </footer>
+      </body>
     </html>
   );
 }

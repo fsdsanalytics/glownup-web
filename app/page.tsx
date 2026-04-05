@@ -2,8 +2,8 @@ import Link from "next/link";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-white text-black">
-      <section className="mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center px-6 text-center">
+    <main className="bg-white text-black">
+      <section className="mx-auto flex max-w-4xl flex-col items-center justify-center px-6 pt-24 pb-16 text-center">
         <p className="mb-4 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
           GlownUp
         </p>

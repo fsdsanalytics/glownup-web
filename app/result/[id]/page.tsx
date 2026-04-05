@@ -94,8 +94,8 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-white px-6 py-12 text-black">
-        <div className="mx-auto max-w-2xl">
+      <main className="bg-white px-6 py-12 text-black">
+        <div className="mx-auto max-w-2xl pt-12">
           <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
             GlownUp
           </p>
@@ -107,8 +107,8 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   if (notFound || !data) {
     return (
-      <main className="min-h-screen bg-white px-6 py-12 text-black">
-        <div className="mx-auto max-w-2xl">
+      <main className="bg-white px-6 py-12 text-black">
+        <div className="mx-auto max-w-2xl pt-12">
           <h1 className="text-3xl font-semibold">Result not found</h1>
           <p className="mt-3 text-gray-600">
             We couldn&apos;t find that transformation.
@@ -128,8 +128,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   const isGenerating = data.status === "pending" || data.status === "generating";
 
   return (
-    <main className="min-h-screen bg-white px-6 py-12 text-black">
-      <div className="mx-auto max-w-3xl">
+    <main className="bg-white px-6 py-12 text-black">
+      <div className="mx-auto max-w-3xl pt-12">
         <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
           GlownUp
         </p>
