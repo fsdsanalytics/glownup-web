@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import TransformationCard from "@/components/TransformationCard";
 
 type ResultPageProps = {
   params: Promise<{
@@ -31,6 +32,31 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [data, setData] = useState<Transformation | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(window.location.href);
+  };
+
+  const handleDownload = async () => {
+    if (!cardRef.current) return;
+
+    const { toJpeg } = await import("html-to-image");
+
+    const dataUrl = await toJpeg(cardRef.current, {
+      quality: 0.95,
+      pixelRatio: 2,
+      backgroundColor: "#ffffff",
+    });
+
+    const link = document.createElement("a");
+    link.href = dataUrl;
+    link.download = "glownup-result.jpg";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -118,24 +144,16 @@ export default function ResultPage({ params }: ResultPageProps) {
           Glow-up level: <span className="font-medium text-black">{glowUpLabel}</span>
         </p>
 
-        <div className="mt-8 rounded-2xl border border-gray-200 p-6">
-          <p className="mb-3 text-sm font-medium text-gray-700">Original image</p>
-          <img
-            src={data.original_image_url}
-            alt="Original upload"
-            className="w-full rounded-2xl border border-gray-200 object-cover"
-          />
-        </div>
-
         <div className="mt-6 rounded-2xl border border-gray-200 p-6">
           <p className="mb-3 text-sm font-medium text-gray-700">Generated result</p>
 
           {data.generated_image_url ? (
-            <img
-              src={data.generated_image_url}
-              alt="Generated result"
-              className="w-full rounded-2xl border border-gray-200 object-cover"
-            />
+            <div ref={cardRef}>
+              <TransformationCard
+                originalImageUrl={data.original_image_url}
+                generatedImageUrl={data.generated_image_url}
+              />
+            </div>
           ) : (
             <div className="rounded-2xl bg-gray-50 p-8 text-gray-600">
               {isGenerating
@@ -154,14 +172,21 @@ export default function ResultPage({ params }: ResultPageProps) {
           </Link>
 
           {data.generated_image_url && (
-            <a
-              href={data.generated_image_url}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
-            >
-              Open result image
-            </a>
+            <>
+              <button
+                onClick={handleDownload}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+              >
+                Download
+              </button>
+
+              <button
+                onClick={handleCopyLink}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+              >
+                Copy link
+              </button>
+            </>
           )}
         </div>
       </div>

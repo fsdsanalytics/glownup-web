@@ -161,7 +161,7 @@ export default function UploadPage() {
               <img
                 src={previewUrl}
                 alt="Preview"
-                className="w-full rounded-2xl border border-gray-200 object-cover"
+                className="max-h-[420px] w-full rounded-2xl border border-gray-200 object-contain"
               />
             </div>
           )}
