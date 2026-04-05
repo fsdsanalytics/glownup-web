@@ -4,6 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import TransformationCard from "@/components/TransformationCard";
+import { track } from "@vercel/analytics";
 
 type ResultPageProps = {
   params: Promise<{
@@ -36,6 +37,11 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(window.location.href);
+    track("share_clicked", {
+      method: "copy_link",
+      glowUpLevel: data?.glow_up_level,
+      transformationId: data?.id,
+    });
   };
 
   const handleDownload = async () => {
@@ -56,6 +62,11 @@ export default function ResultPage({ params }: ResultPageProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    track("result_downloaded", {
+      glowUpLevel: data?.glow_up_level,
+      transformationId: data?.id,
+    });
   };
 
   useEffect(() => {

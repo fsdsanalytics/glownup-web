@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { track } from "@vercel/analytics";
 
 const glowUpOptions = [
   { value: "average", label: "Average" },
@@ -46,6 +47,8 @@ export default function UploadPage() {
       return;
     }
 
+    track("upload_started");
+
     setUploading(true);
     setMessage("");
 
@@ -83,6 +86,10 @@ export default function UploadPage() {
       if (insertError) {
         throw insertError;
       }
+
+      track("upload_completed", {
+        glowUpLevel,
+      });
 
       void fetch("/api/generate", {
         method: "POST",

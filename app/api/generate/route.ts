@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
 import { supabase } from "@/lib/supabase";
+import { track } from "@vercel/analytics/server";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
@@ -148,6 +149,11 @@ export async function POST(req: Request) {
     if (updateError) {
       throw updateError;
     }
+
+    track("generation_completed", {
+      glowUpLevel: transformation.glow_up_level,
+      transformationId: currentTransformationId,
+    });
 
     return NextResponse.json({
       success: true,
