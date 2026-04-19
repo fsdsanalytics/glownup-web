@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       glowUpPromptMap[transformation.glow_up_level] ?? glowUpPromptMap.lean;
 
     const output = await replicate.run(
-      "black-forest-labs/flux-kontext-pro",
+      "black-forest-labs/flux-kontext-max",
       {
         input: {
           prompt,
