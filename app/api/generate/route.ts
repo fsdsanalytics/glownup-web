@@ -13,7 +13,7 @@ const glowUpPromptMap: Record<string, string> = {
   fit:
     "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Reduce body fat modestly and add mild athletic muscle definition so the person looks fit, roughly around 16% body fat. Keep the result photorealistic and natural.",
   lean:
-    "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make the physique leaner with visible but realistic muscle definition so the person looks athletic, roughly around 12% body fat. Keep the result photorealistic and natural.",
+    "Edit this exact same person in the uploaded photo. Preserve the same face, facial structure, hair, skin tone, expression, pose, camera angle, framing, clothing, background, and overall composition. Do not change the person's identity. Only change body composition: reduce body fat to a lean athletic level around 12% body fat, flatten the stomach, slightly narrow the waist, and add moderate realistic muscle definition to the chest, shoulders, arms, and upper abs. Keep the body proportions believable and natural, not exaggerated or bodybuilder-like. Maintain the original lighting and shadows, and keep the result photorealistic.",
   shredded:
     "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make the physique very lean with strong but realistic muscle definition so the person looks shredded, roughly around 8 to 10% body fat. Keep the result photorealistic and natural.",
 };
