@@ -5,19 +5,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { track } from "@vercel/analytics";
 
-const glowUpOptions = [
-  { value: "average", label: "Average" },
-  { value: "fit", label: "Fit" },
-  { value: "lean", label: "Lean" },
-  { value: "shredded", label: "Shredded" },
-];
-
 export default function UploadPage() {
   const router = useRouter();
 
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [glowUpLevel, setGlowUpLevel] = useState("lean");
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -76,7 +68,7 @@ export default function UploadPage() {
         .insert({
           session_id: sessionId,
           original_image_url: originalImageUrl,
-          glow_up_level: glowUpLevel,
+          glow_up_level: "lean",
           status: "pending",
           is_free_generation: true,
         })
@@ -87,9 +79,7 @@ export default function UploadPage() {
         throw insertError;
       }
 
-      track("upload_completed", {
-        glowUpLevel,
-      });
+      track("upload_completed");
 
       void fetch("/api/generate", {
         method: "POST",
@@ -121,35 +111,14 @@ export default function UploadPage() {
           </p>
           <h1 className="text-4xl font-semibold tracking-tight">Upload your photo</h1>
           <p className="mt-3 text-base text-gray-600">
-            Choose your glow-up level, upload a photo, and we&apos;ll start generating your transformation right away.
+            Upload a photo and we&apos;ll generate your glow-up transformation right away.
+          </p>
+          <p className="mt-3 text-base text-gray-600">
+            Best results: use a clear, front-facing photo with your upper body visible and good lighting.
           </p>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <label className="mb-3 block text-sm font-medium text-gray-700">
-            Choose your glow-up level
-          </label>
-
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {glowUpOptions.map((option) => {
-              const isSelected = glowUpLevel === option.value;
-
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setGlowUpLevel(option.value)}
-                  className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                    isSelected
-                      ? "border-black bg-black text-white"
-                      : "border-gray-300 bg-white text-black hover:bg-gray-50"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
 
           <label className="mb-3 block text-sm font-medium text-gray-700">
             Upload an image

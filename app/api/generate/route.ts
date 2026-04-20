@@ -67,12 +67,16 @@ export async function POST(req: Request) {
       glowUpPromptMap[transformation.glow_up_level] ?? glowUpPromptMap.lean;
 
     const output = await replicate.run(
-      "google/nano-banana",
+      "black-forest-labs/flux-kontext-max",
       {
         input: {
           prompt,
-          image_input: [transformation.original_image_url],
+          input_image: transformation.original_image_url,
           output_format: "jpg",
+          aspect_ratio: "match_input_image",
+          output_quality: 90,
+          guidance: 2.5,
+          num_inference_steps: 30,
         },
       }
     );
