@@ -12,8 +12,34 @@ const glowUpPromptMap: Record<string, string> = {
     "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make only subtle physique improvements so the person looks healthy and slightly more in shape, roughly around 20% body fat. Keep the result photorealistic and natural.",
   fit:
     "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Reduce body fat modestly and add mild athletic muscle definition so the person looks fit, roughly around 16% body fat. Keep the result photorealistic and natural.",
-  lean:
-    "Edit this same person in the uploaded photo. Preserve the same face, identity, hairstyle, skin tone, pose, camera angle, framing, and overall scene. Make a clearly visible but realistic lean transformation: reduce body fat, flatten the stomach, narrow the waist slightly, and add natural athletic definition to the chest, shoulders, arms, and upper abs. The result should still look like the same real person, not a different model or bodybuilder. Maintain photorealism, natural skin texture, and similar lighting.",
+  lean: `
+Edit this same person in the uploaded photo.
+
+Preserve the exact same face, identity, facial structure, hairstyle, skin tone, expression, pose, camera angle, framing, and overall scene.
+Do not change age, jawline, nose, eyes, or hairstyle.
+
+Make a clearly visible but realistic lean transformation:
+- Reduce body fat, especially in the lower stomach area
+- Slightly narrow the waist
+- Flatten the stomach naturally
+- Add subtle, natural athletic definition to the chest, shoulders, arms, and upper abs
+
+Keep proportions realistic:
+- Do not create a bodybuilder physique
+- Avoid oversized chest, arms, or exaggerated abs
+- Maintain natural human proportions
+
+Preserve visual consistency:
+- Keep the same lighting direction, shadows, contrast, and color temperature
+- Maintain natural skin texture (no plastic or overly smooth skin)
+
+Preserve posture and composition:
+- Keep the exact same body position and limb placement
+- Do not change perspective or camera distance
+
+The result should look like the same real person, just leaner and more in shape.
+Maintain full photorealism.
+  `,
   shredded:
     "Edit this exact same person in the uploaded photo. Keep the same face, identity, hair, skin tone, pose, framing, background, and overall composition. Make the physique very lean with strong but realistic muscle definition so the person looks shredded, roughly around 8 to 10% body fat. Keep the result photorealistic and natural.",
 };
