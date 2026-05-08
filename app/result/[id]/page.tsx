@@ -52,31 +52,86 @@ export default function ResultPage({ params }: ResultPageProps) {
     });
   };
 
-  const handleDownload = async () => {
-    if (!cardRef.current) return;
+  const convertImageToDataUrl = async (imageUrl: string) => {
+    const response = await fetch(imageUrl, { cache: "no-store" });
+    const blob = await response.blob();
 
-    const { toJpeg } = await import("html-to-image");
-
-    const dataUrl = await toJpeg(cardRef.current, {
-      quality: 0.95,
-      pixelRatio: 2,
-      backgroundColor: "#ffffff",
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result));
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
     });
+  };
 
-    const link = document.createElement("a");
-    link.href = dataUrl;
-    link.download = "glownup-result.jpg";
+  const handleDownload = async () => {
+    if (!cardRef.current || !data?.generated_image_url) return;
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
     setDownloadClicked(true);
     setTimeout(() => setDownloadClicked(false), 1200);
 
-    track("result_downloaded", {
-      glowUpLevel: data?.glow_up_level,
-      transformationId: data?.id,
-    });
+    const images = Array.from(cardRef.current.querySelectorAll("img"));
+    const originalSources = images.map((image) => image.src);
+
+    try {
+      const dataUrls = await Promise.all(
+        originalSources.map((source) => convertImageToDataUrl(source))
+      );
+
+      images.forEach((image, index) => {
+        image.src = dataUrls[index];
+      });
+
+      await Promise.all(
+        images.map((image) => {
+          if (image.complete) return Promise.resolve();
+
+          return new Promise<void>((resolve) => {
+            image.onload = () => resolve();
+            image.onerror = () => resolve();
+          });
+        })
+      );
+
+      const { toJpeg } = await import("html-to-image");
+
+      const dataUrl = await toJpeg(cardRef.current, {
+        quality: 0.95,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        cacheBust: true,
+      });
+
+      const response = await fetch(dataUrl);
+      const blob = await response.blob();
+      const file = new File([blob], "glownup-result.jpg", {
+        type: "image/jpeg",
+      });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "GlownUp transformation",
+        });
+      } else {
+        const link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = "glownup-result.jpg";
+
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+
+      track("result_downloaded", {
+        glowUpLevel: data?.glow_up_level,
+        transformationId: data?.id,
+      });
+    } finally {
+      images.forEach((image, index) => {
+        image.src = originalSources[index];
+      });
+    }
   };
 
   const handleSubmitFeedback = async () => {
@@ -198,9 +253,7 @@ export default function ResultPage({ params }: ResultPageProps) {
           Glow-up level: <span className="font-medium text-black">{glowUpLabel}</span>
         </p>
 
-        <div className="mt-6 rounded-2xl border border-gray-200 p-6">
-          <p className="mb-3 text-sm font-medium text-gray-700">Generated result</p>
-
+        <div className="mt-6 rounded-2xl sm:border sm:border-gray-200 sm:p-4">
           {data.generated_image_url ? (
             <div ref={cardRef}>
               <TransformationCard
