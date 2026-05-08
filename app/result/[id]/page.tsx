@@ -37,10 +37,14 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [feedback, setFeedback] = useState("");
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [downloadClicked, setDownloadClicked] = useState(false);
+  const [copyClicked, setCopyClicked] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(window.location.href);
+    setCopyClicked(true);
+    setTimeout(() => setCopyClicked(false), 1200);
     track("share_clicked", {
       method: "copy_link",
       glowUpLevel: data?.glow_up_level,
@@ -66,6 +70,8 @@ export default function ResultPage({ params }: ResultPageProps) {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setDownloadClicked(true);
+    setTimeout(() => setDownloadClicked(false), 1200);
 
     track("result_downloaded", {
       glowUpLevel: data?.glow_up_level,
@@ -223,14 +229,22 @@ export default function ResultPage({ params }: ResultPageProps) {
             <>
               <button
                 onClick={handleDownload}
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+                className={`inline-flex items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition ${
+                  downloadClicked
+                    ? "border-lime-400 bg-lime-100 text-lime-900"
+                    : "border-gray-300 text-black hover:bg-gray-100"
+                }`}
               >
                 Download
               </button>
 
               <button
                 onClick={handleCopyLink}
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+                className={`inline-flex items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition ${
+                  copyClicked
+                    ? "border-lime-400 bg-lime-100 text-lime-900"
+                    : "border-gray-300 text-black hover:bg-gray-100"
+                }`}
               >
                 Copy link
               </button>
