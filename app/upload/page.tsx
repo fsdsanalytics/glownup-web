@@ -5,6 +5,34 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { track } from "@vercel/analytics";
 
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+const ALLOWED_FILE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+];
+
+const ALLOWED_FILE_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "heic",
+  "heif",
+];
+
+const isValidImageFile = (file: File) => {
+  const extension = file.name.split(".").pop()?.toLowerCase() || "";
+
+  return (
+    ALLOWED_FILE_TYPES.includes(file.type) ||
+    ALLOWED_FILE_EXTENSIONS.includes(extension)
+  );
+};
+
 export default function UploadPage() {
   const router = useRouter();
 
@@ -24,18 +52,45 @@ export default function UploadPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
-    setFile(selectedFile);
+    setMessage("");
 
-    if (selectedFile) {
-      setPreviewUrl(URL.createObjectURL(selectedFile));
-    } else {
+    if (!selectedFile) {
+      setFile(null);
       setPreviewUrl(null);
+      return;
     }
+
+    if (!isValidImageFile(selectedFile)) {
+      setFile(null);
+      setPreviewUrl(null);
+      setMessage("Please upload a JPG, PNG, WebP, or HEIC image.");
+      return;
+    }
+
+    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      setFile(null);
+      setPreviewUrl(null);
+      setMessage("Please upload an image smaller than 10MB.");
+      return;
+    }
+
+    setFile(selectedFile);
+    setPreviewUrl(URL.createObjectURL(selectedFile));
   };
 
   const handleUpload = async () => {
     if (!file) {
       setMessage("Please select an image first.");
+      return;
+    }
+
+    if (!isValidImageFile(file)) {
+      setMessage("Please upload a JPG, PNG, WebP, or HEIC image.");
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setMessage("Please upload an image smaller than 10MB.");
       return;
     }
 
@@ -46,6 +101,22 @@ export default function UploadPage() {
 
     try {
       const sessionId = getSessionId();
+
+      const { count, error: countError } = await supabase
+        .from("transformations")
+        .select("*", { count: "exact", head: true })
+        .eq("session_id", sessionId);
+
+      if (countError) {
+        throw countError;
+      }
+
+      if ((count || 0) >= 3) {
+        setMessage("Free generation limit reached for this session.");
+        setUploading(false);
+        return;
+      }
+
       const fileExt = file.name.split(".").pop() || "jpg";
       const fileName = `${sessionId}/${crypto.randomUUID()}.${fileExt}`;
 
@@ -126,7 +197,7 @@ export default function UploadPage() {
 
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
             onChange={handleFileChange}
             className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-gray-800"
           />
