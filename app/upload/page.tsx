@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { track } from "@vercel/analytics";
 
@@ -177,9 +178,16 @@ export default function UploadPage() {
     <main className="bg-white px-6 py-12 text-black">
       <div className="mx-auto max-w-xl pt-12">
         <div className="mb-8">
-          <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
-            GlownUp
-          </p>
+          <div className="mb-6 flex justify-start">
+            <Image
+              src="/wordmark.png"
+              alt="GlownUp"
+              width={220}
+              height={44}
+              priority
+              className="h-10 w-auto object-contain brightness-0"
+            />
+          </div>
           <h1 className="text-4xl font-semibold tracking-tight">Upload your photo</h1>
           <p className="mt-3 text-base text-gray-600">
             Upload a photo and we&apos;ll generate your glow-up transformation right away.

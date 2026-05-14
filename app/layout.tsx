@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Image from "next/image";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -31,8 +32,15 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col bg-white text-black">
         <header className="border-b border-gray-100 bg-white">
           <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-            <a href="/" className="text-sm font-semibold tracking-[0.25em] text-gray-900">
-              GLOWNUP
+            <a href="/" className="flex items-center">
+              <Image
+                src="/wordmark.png"
+                alt="GlownUp"
+                width={260}
+                height={52}
+                priority
+                className="h-11 w-auto object-contain brightness-0"
+              />
             </a>
 
             <div className="hidden items-center gap-5 text-sm text-gray-600 sm:flex">
