@@ -37,19 +37,25 @@ const isValidImageFile = (file: File) => {
 export default function UploadPage() {
   const router = useRouter();
 
+  const getTodayKey = () => new Date().toISOString().slice(0, 10);
+
+  const getSessionId = () => {
+    const todayKey = getTodayKey();
+    const storedDate = localStorage.getItem("glownup_session_date");
+    const existing = localStorage.getItem("glownup_session_id");
+
+    if (existing && storedDate === todayKey) return existing;
+
+    const newSessionId = crypto.randomUUID();
+    localStorage.setItem("glownup_session_id", newSessionId);
+    localStorage.setItem("glownup_session_date", todayKey);
+    return newSessionId;
+  };
+
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
-
-  const getSessionId = () => {
-    const existing = localStorage.getItem("glownup_session_id");
-    if (existing) return existing;
-
-    const newSessionId = crypto.randomUUID();
-    localStorage.setItem("glownup_session_id", newSessionId);
-    return newSessionId;
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
@@ -113,7 +119,7 @@ export default function UploadPage() {
       }
 
       if ((count || 0) >= 3) {
-        setMessage("Free generation limit reached for this session.");
+        setMessage("Free generation limit reached for today. Come back tomorrow to generate more.");
         setUploading(false);
         return;
       }
