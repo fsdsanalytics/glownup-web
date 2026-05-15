@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type TransformationCardProps = {
   originalImageUrl: string;
   generatedImageUrl: string;
@@ -9,11 +11,21 @@ export default function TransformationCard({
 }: TransformationCardProps) {
   return (
     <div
-      className="w-full select-none bg-white p-2 sm:p-6"
+      className="w-full select-none bg-white p-0 sm:p-6"
       onContextMenu={(event) => event.preventDefault()}
     >
       <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg sm:rounded-3xl">
-        <div className="grid grid-cols-2 gap-0 bg-white px-3 pb-4 pt-5 sm:px-10 sm:pb-10 sm:pt-10">
+        <div className="flex justify-center px-6 py-5">
+          <Image
+            src="/wordmark.png"
+            alt="GlownUp"
+            width={240}
+            height={48}
+            className="h-10 w-auto object-contain brightness-0"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-0 bg-white px-3 pb-4 pt-1 sm:px-10 sm:pb-10 sm:pt-3">
           <div className="pr-2 sm:pr-8">
             <p className="mb-3 text-center text-xs font-bold uppercase tracking-[0.25em] text-gray-800 sm:mb-5 sm:text-base sm:tracking-[0.3em]">
               Before
@@ -45,12 +57,16 @@ export default function TransformationCard({
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-2 bg-gray-950 px-4 py-3 text-white sm:px-6 sm:py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border border-lime-300 text-base font-bold text-lime-300">
-            G
-          </div>
+        <div className="flex items-center justify-center gap-3 bg-gray-950 px-4 py-3 text-white sm:px-6 sm:py-4">
+          <Image
+            src="/logo_border.png"
+            alt="GlownUp logo"
+            width={42}
+            height={42}
+            className="h-10 w-10 object-contain"
+          />
           <p className="text-base font-semibold tracking-tight sm:text-lg">
-            GlownUp.app
+            www.GlownUp.app
           </p>
         </div>
       </div>

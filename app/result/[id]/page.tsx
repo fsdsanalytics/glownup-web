@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { use, useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import TransformationCard from "@/components/TransformationCard";
@@ -108,11 +109,19 @@ export default function ResultPage({ params }: ResultPageProps) {
         type: "image/jpeg",
       });
 
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: "GlownUp transformation",
-        });
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      if (isMobile && navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: "GlownUp transformation",
+          });
+        } catch (error) {
+          if ((error as Error).name !== "AbortError") {
+            throw error;
+          }
+        }
       } else {
         const link = document.createElement("a");
         link.href = dataUrl;
@@ -207,9 +216,16 @@ export default function ResultPage({ params }: ResultPageProps) {
     return (
       <main className="bg-white px-6 py-12 text-black">
         <div className="mx-auto max-w-2xl pt-12">
-          <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
-            GlownUp
-          </p>
+          <div className="mb-6 flex justify-start">
+            <Image
+              src="/wordmark.png"
+              alt="GlownUp"
+              width={220}
+              height={44}
+              priority
+              className="h-10 w-auto object-contain brightness-0"
+            />
+          </div>
           <h1 className="text-3xl font-semibold">Loading your transformation...</h1>
         </div>
       </main>
@@ -239,18 +255,19 @@ export default function ResultPage({ params }: ResultPageProps) {
   return (
     <main className="bg-white px-6 py-12 text-black">
       <div className="mx-auto max-w-3xl pt-12">
-        <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-gray-500">
-          GlownUp
-        </p>
-
-        <h1 className="text-4xl font-semibold tracking-tight">Your transformation</h1>
+        <div className="mb-6 flex justify-start">
+          <Image
+            src="/wordmark.png"
+            alt="GlownUp"
+            width={220}
+            height={44}
+            priority
+            className="h-10 w-auto object-contain brightness-0"
+          />
+        </div>
 
         <p className="mt-3 text-base text-gray-600">
           Status: <span className="font-medium capitalize text-black">{data.status}</span>
-        </p>
-
-        <p className="mt-1 text-base text-gray-600">
-          Glow-up level: <span className="font-medium text-black">{glowUpLabel}</span>
         </p>
 
         <div className="mt-6 rounded-2xl sm:border sm:border-gray-200 sm:p-4">
@@ -264,7 +281,7 @@ export default function ResultPage({ params }: ResultPageProps) {
           ) : (
             <div className="rounded-2xl bg-gray-50 p-8 text-gray-600">
               {isGenerating
-                ? "Your transformation is being generated. This page refreshes automatically every few seconds."
+                ? "Your transformation is being generated. Please wait up to 15 seconds."
                 : "Your transformation is not available yet."}
             </div>
           )}
@@ -282,22 +299,14 @@ export default function ResultPage({ params }: ResultPageProps) {
             <>
               <button
                 onClick={handleDownload}
-                className={`inline-flex items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition ${
-                  downloadClicked
-                    ? "border-lime-400 bg-lime-100 text-lime-900"
-                    : "border-gray-300 text-black hover:bg-gray-100"
-                }`}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
               >
                 Download
               </button>
 
               <button
                 onClick={handleCopyLink}
-                className={`inline-flex items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition ${
-                  copyClicked
-                    ? "border-lime-400 bg-lime-100 text-lime-900"
-                    : "border-gray-300 text-black hover:bg-gray-100"
-                }`}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
               >
                 Copy link
               </button>
