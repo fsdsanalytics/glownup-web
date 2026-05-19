@@ -3,10 +3,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Cropper from "react-easy-crop";
+import type { Area } from "react-easy-crop";
 import { supabase } from "@/lib/supabase";
 import { track } from "@vercel/analytics";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const CROP_ASPECT_RATIO = 4 / 5;
+const CROP_OUTPUT_WIDTH = 1080;
+const CROP_OUTPUT_HEIGHT = 1350;
 
 const ALLOWED_FILE_TYPES = [
   "image/jpeg",
@@ -34,6 +39,57 @@ const isValidImageFile = (file: File) => {
   );
 };
 
+const createImage = (url: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new window.Image();
+    image.addEventListener("load", () => resolve(image));
+    image.addEventListener("error", reject);
+    image.src = url;
+  });
+
+const getCroppedImageFile = async (
+  imageSrc: string,
+  croppedAreaPixels: Area,
+  originalFileName: string
+) => {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    throw new Error("Could not create image canvas.");
+  }
+
+  canvas.width = CROP_OUTPUT_WIDTH;
+  canvas.height = CROP_OUTPUT_HEIGHT;
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.drawImage(
+    image,
+    croppedAreaPixels.x,
+    croppedAreaPixels.y,
+    croppedAreaPixels.width,
+    croppedAreaPixels.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, "image/jpeg", 0.92);
+  });
+
+  if (!blob) {
+    throw new Error("Could not crop image.");
+  }
+
+  const baseName = originalFileName.replace(/\.[^/.]+$/, "") || "glownup-upload";
+  return new File([blob], `${baseName}-cropped.jpg`, { type: "image/jpeg" });
+};
+
 export default function UploadPage() {
   const router = useRouter();
 
@@ -53,7 +109,13 @@ export default function UploadPage() {
   };
 
   const [file, setFile] = useState<File | null>(null);
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
+  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [cropEditorOpen, setCropEditorOpen] = useState(false);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -63,31 +125,68 @@ export default function UploadPage() {
 
     if (!selectedFile) {
       setFile(null);
+      setSourceFile(null);
+      setSourceImageUrl(null);
       setPreviewUrl(null);
+      setCropEditorOpen(false);
       return;
     }
 
     if (!isValidImageFile(selectedFile)) {
       setFile(null);
+      setSourceFile(null);
+      setSourceImageUrl(null);
       setPreviewUrl(null);
+      setCropEditorOpen(false);
       setMessage("Please upload a JPG, PNG, WebP, or HEIC image.");
       return;
     }
 
     if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
       setFile(null);
+      setSourceFile(null);
+      setSourceImageUrl(null);
       setPreviewUrl(null);
+      setCropEditorOpen(false);
       setMessage("Please upload an image smaller than 10MB.");
       return;
     }
 
-    setFile(selectedFile);
-    setPreviewUrl(URL.createObjectURL(selectedFile));
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setSourceFile(selectedFile);
+    setSourceImageUrl(objectUrl);
+    setFile(null);
+    setPreviewUrl(null);
+    setCrop({ x: 0, y: 0 });
+    setZoom(1);
+    setCroppedAreaPixels(null);
+    setCropEditorOpen(true);
+  };
+
+  const handleConfirmCrop = async () => {
+    if (!sourceImageUrl || !sourceFile || !croppedAreaPixels) return;
+
+    try {
+      const croppedFile = await getCroppedImageFile(
+        sourceImageUrl,
+        croppedAreaPixels,
+        sourceFile.name
+      );
+
+      const croppedPreviewUrl = URL.createObjectURL(croppedFile);
+      setFile(croppedFile);
+      setPreviewUrl(croppedPreviewUrl);
+      setCropEditorOpen(false);
+      setMessage("");
+    } catch (error) {
+      console.error(error);
+      setMessage("Could not crop this image. Try a JPG, PNG, or screenshot instead.");
+    }
   };
 
   const handleUpload = async () => {
     if (!file) {
-      setMessage("Please select an image first.");
+      setMessage("Please select and crop an image first.");
       return;
     }
 
@@ -196,15 +295,14 @@ export default function UploadPage() {
           </div>
           <h1 className="text-4xl font-semibold tracking-tight">Upload your photo</h1>
           <p className="mt-3 text-base text-gray-600">
-            Upload a photo and we&apos;ll generate your glow-up transformation right away.
+            Upload a photo and crop it to frame your upper body.
           </p>
           <p className="mt-3 text-base text-gray-600">
-            Best results: use a clear, front-facing photo with your upper body visible and good lighting.
+            Best results: clear, front-facing photo with good lighting.
           </p>
         </div>
 
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-
           <label className="mb-3 block text-sm font-medium text-gray-700">
             Upload an image
           </label>
@@ -216,7 +314,46 @@ export default function UploadPage() {
             className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm file:mr-4 file:rounded-full file:border-0 file:bg-black file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-gray-800"
           />
 
-          {previewUrl && (
+          {cropEditorOpen && sourceImageUrl && (
+            <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50 p-4">
+              <p className="mb-3 text-sm font-medium text-gray-700">
+                Crop your photo
+              </p>
+              <div className="relative h-[420px] w-full overflow-hidden rounded-2xl bg-black">
+                <Cropper
+                  image={sourceImageUrl}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={CROP_ASPECT_RATIO}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
+                />
+              </div>
+
+              <label className="mt-4 block text-sm font-medium text-gray-700">
+                Zoom
+              </label>
+              <input
+                type="range"
+                min={1}
+                max={3}
+                step={0.1}
+                value={zoom}
+                onChange={(event) => setZoom(Number(event.target.value))}
+                className="mt-2 w-full"
+              />
+
+              <button
+                onClick={handleConfirmCrop}
+                className="mt-4 w-full rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+              >
+                Use this crop
+              </button>
+            </div>
+          )}
+
+          {previewUrl && !cropEditorOpen && (
             <div className="mt-6">
               <p className="mb-2 text-sm font-medium text-gray-700">Preview</p>
               <img
@@ -229,7 +366,7 @@ export default function UploadPage() {
 
           <button
             onClick={handleUpload}
-            disabled={uploading}
+            disabled={uploading || cropEditorOpen}
             className="mt-6 w-full rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {uploading ? "Uploading..." : "Generate my glow-up"}
