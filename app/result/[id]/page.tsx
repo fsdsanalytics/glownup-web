@@ -165,16 +165,26 @@ export default function ResultPage({ params }: ResultPageProps) {
 
       const wordmarkWidth = 400;
       const wordmarkHeight = wordmarkWidth * (wordmarkImage.height / wordmarkImage.width);
-      ctx.save();
-      ctx.filter = "brightness(0)";
+
+      const wordmarkCanvas = document.createElement("canvas");
+      wordmarkCanvas.width = wordmarkWidth;
+      wordmarkCanvas.height = wordmarkHeight;
+
+      const wordmarkCtx = wordmarkCanvas.getContext("2d");
+      if (!wordmarkCtx) throw new Error("Could not create wordmark canvas.");
+
+      wordmarkCtx.drawImage(wordmarkImage, 0, 0, wordmarkWidth, wordmarkHeight);
+      wordmarkCtx.globalCompositeOperation = "source-in";
+      wordmarkCtx.fillStyle = "#000000";
+      wordmarkCtx.fillRect(0, 0, wordmarkWidth, wordmarkHeight);
+
       ctx.drawImage(
-        wordmarkImage,
+        wordmarkCanvas,
         (canvas.width - wordmarkWidth) / 2,
         50,
         wordmarkWidth,
         wordmarkHeight
       );
-      ctx.restore();
 
       ctx.fillStyle = "#1f2937";
       ctx.font = "700 28px Arial, sans-serif";
