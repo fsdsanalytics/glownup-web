@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import TransformationCard from "@/components/TransformationCard";
 import { track } from "@vercel/analytics";
 
 type ResultPageProps = {
@@ -40,7 +39,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [downloadClicked, setDownloadClicked] = useState(false);
   const [copyClicked, setCopyClicked] = useState(false);
-  const cardRef = useRef<HTMLDivElement | null>(null);
+  const [exportedCardUrl, setExportedCardUrl] = useState<string | null>(null);
+  const [exportingCard, setExportingCard] = useState(false);
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(window.location.href);
@@ -65,82 +65,201 @@ export default function ResultPage({ params }: ResultPageProps) {
     });
   };
 
+  const loadImage = async (src: string) => {
+    return await new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new window.Image();
+      image.onload = () => resolve(image);
+      image.onerror = reject;
+      image.src = src;
+    });
+  };
+
+  const drawRoundedRect = (
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    radius: number
+  ) => {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+  };
+
+  const drawImageCover = (
+    ctx: CanvasRenderingContext2D,
+    image: HTMLImageElement,
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ) => {
+    const imageRatio = image.width / image.height;
+    const targetRatio = width / height;
+
+    let sourceX = 0;
+    let sourceY = 0;
+    let sourceWidth = image.width;
+    let sourceHeight = image.height;
+
+    if (imageRatio > targetRatio) {
+      sourceWidth = image.height * targetRatio;
+      sourceX = (image.width - sourceWidth) / 2;
+    } else {
+      sourceHeight = image.width / targetRatio;
+      sourceY = (image.height - sourceHeight) / 2;
+    }
+
+    ctx.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      x,
+      y,
+      width,
+      height
+    );
+  };
+
+  const generateExportedCard = async () => {
+    if (!data?.generated_image_url || exportingCard || exportedCardUrl) return;
+
+    setExportingCard(true);
+
+    try {
+      const [originalDataUrl, generatedDataUrl, wordmarkDataUrl, logoDataUrl] =
+        await Promise.all([
+          convertImageToDataUrl(data.original_image_url),
+          convertImageToDataUrl(data.generated_image_url),
+          convertImageToDataUrl("/wordmark.png"),
+          convertImageToDataUrl("/logo_border.png"),
+        ]);
+
+      const [originalImage, generatedImage, wordmarkImage, logoImage] = await Promise.all([
+        loadImage(originalDataUrl),
+        loadImage(generatedDataUrl),
+        loadImage(wordmarkDataUrl),
+        loadImage(logoDataUrl),
+      ]);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = 1080;
+      canvas.height = 1080;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Could not create export canvas.");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const wordmarkWidth = 400;
+      const wordmarkHeight = wordmarkWidth * (wordmarkImage.height / wordmarkImage.width);
+      ctx.save();
+      ctx.filter = "brightness(0)";
+      ctx.drawImage(
+        wordmarkImage,
+        (canvas.width - wordmarkWidth) / 2,
+        50,
+        wordmarkWidth,
+        wordmarkHeight
+      );
+      ctx.restore();
+
+      ctx.fillStyle = "#1f2937";
+      ctx.font = "700 28px Arial, sans-serif";
+      ctx.letterSpacing = "0px";
+      ctx.textAlign = "center";
+      ctx.fillText("B E F O R E", 285, 220);
+      ctx.fillText("A F T E R", 795, 220);
+
+      ctx.strokeStyle = "#d1d5db";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(540, 245);
+      ctx.lineTo(540, 910);
+      ctx.stroke();
+
+      const imageY = 255;
+      const imageWidth = 455;
+      const imageHeight = 650;
+      drawImageCover(ctx, originalImage, 55, imageY, imageWidth, imageHeight);
+      drawImageCover(ctx, generatedImage, 570, imageY, imageWidth, imageHeight);
+
+      const footerY = 955;
+      const footerHeight = 125;
+      ctx.fillStyle = "#030712";
+      ctx.fillRect(0, footerY, canvas.width, footerHeight);
+
+      const logoSize = 52;
+      const logoX = 360;
+      const logoY = footerY + (footerHeight - logoSize) / 2;
+      ctx.drawImage(logoImage, logoX, logoY, logoSize, logoSize);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "700 32px Arial, sans-serif";
+      ctx.letterSpacing = "0px";
+      ctx.textAlign = "left";
+      ctx.fillText("www.GlownUp.app", logoX + 72, footerY + 74);
+
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+      setExportedCardUrl(dataUrl);
+    } catch (error) {
+      console.error("Could not prepare exported card:", error);
+    } finally {
+      setExportingCard(false);
+    }
+  };
+
   const handleDownload = async () => {
-    if (!cardRef.current || !data?.generated_image_url) return;
+    if (!exportedCardUrl) return;
 
     setDownloadClicked(true);
     setTimeout(() => setDownloadClicked(false), 1200);
 
-    const images = Array.from(cardRef.current.querySelectorAll("img"));
-    const originalSources = images.map((image) => image.src);
+    const response = await fetch(exportedCardUrl);
+    const blob = await response.blob();
+    const file = new File([blob], "glownup-result.jpg", {
+      type: "image/jpeg",
+    });
 
-    try {
-      const dataUrls = await Promise.all(
-        originalSources.map((source) => convertImageToDataUrl(source))
-      );
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
-      images.forEach((image, index) => {
-        image.src = dataUrls[index];
-      });
-
-      await Promise.all(
-        images.map((image) => {
-          if (image.complete) return Promise.resolve();
-
-          return new Promise<void>((resolve) => {
-            image.onload = () => resolve();
-            image.onerror = () => resolve();
-          });
-        })
-      );
-
-      const { toJpeg } = await import("html-to-image");
-
-      const dataUrl = await toJpeg(cardRef.current, {
-        quality: 0.95,
-        pixelRatio: 2,
-        backgroundColor: "#ffffff",
-        cacheBust: true,
-      });
-
-      const response = await fetch(dataUrl);
-      const blob = await response.blob();
-      const file = new File([blob], "glownup-result.jpg", {
-        type: "image/jpeg",
-      });
-
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-      if (isMobile && navigator.canShare?.({ files: [file] })) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: "GlownUp transformation",
-          });
-        } catch (error) {
-          if ((error as Error).name !== "AbortError") {
-            throw error;
-          }
+    if (isMobile && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "GlownUp transformation",
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          throw error;
         }
-      } else {
-        const link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = "glownup-result.jpg";
-
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
       }
+    } else {
+      const link = document.createElement("a");
+      link.href = exportedCardUrl;
+      link.download = "glownup-result.jpg";
 
-      track("result_downloaded", {
-        glowUpLevel: data?.glow_up_level,
-        transformationId: data?.id,
-      });
-    } finally {
-      images.forEach((image, index) => {
-        image.src = originalSources[index];
-      });
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
+
+    track("result_downloaded", {
+      glowUpLevel: data?.glow_up_level,
+      transformationId: data?.id,
+    });
   };
 
   const handleSubmitFeedback = async () => {
@@ -212,6 +331,12 @@ export default function ResultPage({ params }: ResultPageProps) {
     };
   }, [id]);
 
+  useEffect(() => {
+    if (!data?.generated_image_url) return;
+
+    void generateExportedCard();
+  }, [data?.generated_image_url]);
+
   if (loading) {
     return (
       <main className="bg-white px-6 py-12 text-black">
@@ -254,35 +379,44 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   return (
     <main className="bg-white px-6 py-12 text-black">
-      <div className="mx-auto max-w-3xl pt-12">
-        <div className="mb-6 flex justify-start">
-          <Image
-            src="/wordmark.png"
-            alt="GlownUp"
-            width={220}
-            height={44}
-            priority
-            className="h-10 w-auto object-contain brightness-0"
-          />
-        </div>
+      <div className="mx-auto max-w-xl pt-0">
 
-        <p className="mt-3 text-base text-gray-600">
-          Status: <span className="font-medium capitalize text-black">{data.status}</span>
-        </p>
-
-        <div className="mt-6 rounded-2xl sm:border sm:border-gray-200 sm:p-4">
+        <div className="mt-4">
           {data.generated_image_url ? (
-            <div ref={cardRef}>
-              <TransformationCard
-                originalImageUrl={data.original_image_url}
-                generatedImageUrl={data.generated_image_url}
-              />
-            </div>
+            <>
+              {exportedCardUrl ? (
+                <img
+                  src={exportedCardUrl}
+                  alt="GlownUp transformation result"
+                  className="w-full rounded-2xl border border-gray-200 shadow-lg"
+                />
+              ) : (
+                <div className="rounded-2xl bg-gray-50 p-8 text-center text-sm text-gray-600">
+                  Preparing your shareable result...
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-2xl bg-gray-50 p-8 text-gray-600">
-              {isGenerating
-                ? "Your transformation is being generated. Please wait up to 15 seconds."
-                : "Your transformation is not available yet."}
+              {isGenerating ? (
+                <div className="flex flex-col items-center justify-center text-center">
+                  <p className="text-base font-medium text-black">
+                    Generating your glow-up
+                  </p>
+
+                  <div className="mt-4 flex gap-2">
+                    <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black [animation-delay:-0.3s]" />
+                    <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black [animation-delay:-0.15s]" />
+                    <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black" />
+                  </div>
+
+                  <p className="mt-4 text-sm text-gray-600">
+                    This usually takes 15–45 seconds.
+                  </p>
+                </div>
+              ) : (
+                "Your transformation is not available yet."
+              )}
             </div>
           )}
         </div>
@@ -295,7 +429,7 @@ export default function ResultPage({ params }: ResultPageProps) {
             Try another
           </Link>
 
-          {data.generated_image_url && (
+          {data.generated_image_url && exportedCardUrl && (
             <>
               <button
                 onClick={handleDownload}
