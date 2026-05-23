@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { use, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { track } from "@vercel/analytics";
 
 type ResultPageProps = {
   params: Promise<{
@@ -41,15 +40,46 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [copyClicked, setCopyClicked] = useState(false);
   const [exportedCardUrl, setExportedCardUrl] = useState<string | null>(null);
   const [exportingCard, setExportingCard] = useState(false);
+  const [completedEventTracked, setCompletedEventTracked] = useState(false);
+  const [failedEventTracked, setFailedEventTracked] = useState(false);
+
+  const getSessionId = () => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("glownup_session_id");
+  };
+
+  const trackEvent = async ({
+    eventName,
+    transformationId = data?.id ?? null,
+    metadata = {},
+  }: {
+    eventName: string;
+    transformationId?: string | null;
+    metadata?: Record<string, unknown>;
+  }) => {
+    try {
+      await supabase.from("events").insert({
+        event_name: eventName,
+        session_id: getSessionId(),
+        transformation_id: transformationId,
+        page_path: window.location.pathname,
+        metadata,
+      });
+    } catch (error) {
+      console.error("Analytics event failed:", error);
+    }
+  };
 
   const handleCopyLink = async () => {
     await navigator.clipboard.writeText(window.location.href);
     setCopyClicked(true);
     setTimeout(() => setCopyClicked(false), 1200);
-    track("share_clicked", {
-      method: "copy_link",
-      glowUpLevel: data?.glow_up_level,
-      transformationId: data?.id,
+    void trackEvent({
+      eventName: "copy_link",
+      metadata: {
+        method: "copy_link",
+        glowUpLevel: data?.glow_up_level,
+      },
     });
   };
 
@@ -266,9 +296,12 @@ export default function ResultPage({ params }: ResultPageProps) {
       document.body.removeChild(link);
     }
 
-    track("result_downloaded", {
-      glowUpLevel: data?.glow_up_level,
-      transformationId: data?.id,
+    void trackEvent({
+      eventName: "save_transformation",
+      metadata: {
+        glowUpLevel: data?.glow_up_level,
+        exportType: "before_after_card",
+      },
     });
   };
 
@@ -302,9 +335,12 @@ export default function ResultPage({ params }: ResultPageProps) {
 
     URL.revokeObjectURL(objectUrl);
 
-    track("photo_only_downloaded", {
-      glowUpLevel: data?.glow_up_level,
-      transformationId: data?.id,
+    void trackEvent({
+      eventName: "save_photo",
+      metadata: {
+        glowUpLevel: data?.glow_up_level,
+        exportType: "photo_only",
+      },
     });
   };
 
@@ -329,7 +365,8 @@ export default function ResultPage({ params }: ResultPageProps) {
     setFeedbackMessage("Thanks — your feedback was saved.");
     setSubmittingFeedback(false);
 
-    track("feedback_submitted", {
+    void trackEvent({
+      eventName: "feedback_submitted",
       transformationId: data.id,
     });
   };
@@ -378,10 +415,44 @@ export default function ResultPage({ params }: ResultPageProps) {
   }, [id]);
 
   useEffect(() => {
+    void trackEvent({
+      eventName: "page_visit",
+      transformationId: id,
+      metadata: { page: "result" },
+    });
+  }, [id]);
+
+  useEffect(() => {
     if (!data?.generated_image_url) return;
 
     void generateExportedCard();
   }, [data?.generated_image_url]);
+
+  useEffect(() => {
+    if (!data || completedEventTracked) return;
+
+    if (data.status === "completed" && data.generated_image_url) {
+      void trackEvent({
+        eventName: "generation_completed",
+        transformationId: data.id,
+        metadata: { glowUpLevel: data.glow_up_level },
+      });
+      setCompletedEventTracked(true);
+    }
+  }, [data, completedEventTracked]);
+
+  useEffect(() => {
+    if (!data || failedEventTracked) return;
+
+    if (data.status === "failed") {
+      void trackEvent({
+        eventName: "generation_failed",
+        transformationId: data.id,
+        metadata: { glowUpLevel: data.glow_up_level },
+      });
+      setFailedEventTracked(true);
+    }
+  }, [data, failedEventTracked]);
 
   if (loading) {
     return (
@@ -467,41 +538,39 @@ export default function ResultPage({ params }: ResultPageProps) {
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            {data.generated_image_url && exportedCardUrl && (
-              <>
-                <button
-                  onClick={handleDownload}
-                  className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
-                >
-                  Save Transformation
-                </button>
+        {data.generated_image_url && exportedCardUrl && (
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <button
+                onClick={handleDownload}
+                className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+              >
+                Save Transformation
+              </button>
 
-                <button
-                  onClick={handleDownloadPhotoOnly}
-                  className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
-                >
-                  Save Photo
-                </button>
-              </>
-            )}
+              <button
+                onClick={handleDownloadPhotoOnly}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+              >
+                Save Photo
+              </button>
 
-            <button
-              onClick={handleCopyLink}
+              <button
+                onClick={handleCopyLink}
+                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+              >
+                Copy Link
+              </button>
+            </div>
+
+            <Link
+              href="/upload"
               className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
             >
-              Copy Link
-            </button>
+              Try Again
+            </Link>
           </div>
-
-          <Link
-            href="/upload"
-            className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
-          >
-            Try Again
-          </Link>
-        </div>
+        )}
 
         {data.generated_image_url && (
           <div className="mt-8 rounded-2xl border border-gray-200 p-6">

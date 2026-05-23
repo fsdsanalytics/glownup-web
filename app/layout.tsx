@@ -42,8 +42,11 @@ export default function RootLayout({
                 className="h-11 w-auto object-contain brightness-0"
               />
             </a>
-
+            
             <div className="hidden items-center gap-5 text-sm text-gray-600 sm:flex">
+              <a href="/instructions" className="hover:text-black">
+                Tips
+              </a>
               <a href="/privacy" className="hover:text-black">
                 Privacy
               </a>
@@ -69,6 +72,9 @@ export default function RootLayout({
               </summary>
 
               <div className="absolute right-0 top-12 z-50 w-44 rounded-2xl border border-gray-200 bg-white p-2 text-sm text-gray-700 shadow-lg">
+                <a href="/instructions" className="block rounded-xl px-4 py-3 hover:bg-gray-50 hover:text-black">
+                  Tips
+                </a>
                 <a href="/privacy" className="block rounded-xl px-4 py-3 hover:bg-gray-50 hover:text-black">
                   Privacy
                 </a>
@@ -86,13 +92,21 @@ export default function RootLayout({
         <main className="flex-1 bg-white">{children}</main>
 
         <footer className="mt-auto border-t border-gray-200 bg-white py-8 text-center text-sm text-gray-500">
-          <div className="mb-4 flex justify-center">
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <Image
+              src="/logo_border.png"
+              alt="GlownUp logo"
+              width={28}
+              height={28}
+              className="h-7 w-7 object-contain"
+            />
+
             <Image
               src="/wordmark.png"
               alt="GlownUp"
               width={260}
               height={52}
-              className="h-11 w-auto object-contain brightness-0"
+              className="h-7 w-auto object-contain brightness-0"
             />
           </div>
 
@@ -101,6 +115,10 @@ export default function RootLayout({
           <div className="mt-2 flex justify-center gap-4">
             <a href="/" className="hover:text-black">
               Home
+            </a>
+
+            <a href="/instructions" className="hover:text-black">
+              Tips
             </a>
 
             <a href="/privacy" className="hover:text-black">

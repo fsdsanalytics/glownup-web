@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
 import { supabase } from "@/lib/supabase";
-import { track } from "@vercel/analytics";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const CROP_ASPECT_RATIO = 3 / 4;
@@ -108,6 +107,28 @@ export default function UploadPage() {
     return newSessionId;
   };
 
+  const trackEvent = async ({
+    eventName,
+    transformationId = null,
+    metadata = {},
+  }: {
+    eventName: string;
+    transformationId?: string | null;
+    metadata?: Record<string, unknown>;
+  }) => {
+    try {
+      await supabase.from("events").insert({
+        event_name: eventName,
+        session_id: getSessionId(),
+        transformation_id: transformationId,
+        page_path: window.location.pathname,
+        metadata,
+      });
+    } catch (error) {
+      console.error("Analytics event failed:", error);
+    }
+  };
+
   const [file, setFile] = useState<File | null>(null);
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
@@ -119,9 +140,14 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState("");
 
+  useEffect(() => {
+    void trackEvent({ eventName: "page_visit" });
+  }, []);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0] || null;
     setMessage("");
+    void trackEvent({ eventName: "upload_file_selected" });
 
     if (!selectedFile) {
       setFile(null);
@@ -200,7 +226,7 @@ export default function UploadPage() {
       return;
     }
 
-    track("upload_started");
+    void trackEvent({ eventName: "upload_started" });
 
     setUploading(true);
     setMessage("");
@@ -218,6 +244,10 @@ export default function UploadPage() {
       }
 
       if ((count || 0) >= 3) {
+        void trackEvent({
+          eventName: "generation_limit_reached",
+          metadata: { limit: 3 },
+        });
         setMessage("Free generation limit reached for today. Come back tomorrow to generate more.");
         setUploading(false);
         return;
@@ -256,7 +286,15 @@ export default function UploadPage() {
         throw insertError;
       }
 
-      track("upload_completed");
+      void trackEvent({
+        eventName: "upload_completed",
+        transformationId: insertData.id,
+      });
+
+      void trackEvent({
+        eventName: "generation_started",
+        transformationId: insertData.id,
+      });
 
       void fetch("/api/generate", {
         method: "POST",
@@ -273,6 +311,12 @@ export default function UploadPage() {
       router.push(`/result/${insertData.id}`);
     } catch (error) {
       console.error(error);
+      void trackEvent({
+        eventName: "upload_failed",
+        metadata: {
+          message: error instanceof Error ? error.message : "Unknown error",
+        },
+      });
       setMessage("Upload failed.");
     } finally {
       setUploading(false);
@@ -283,22 +327,16 @@ export default function UploadPage() {
     <main className="bg-white px-6 py-12 text-black">
       <div className="mx-auto max-w-xl pt-12">
         <div className="mb-8">
-          <div className="mb-6 flex justify-start">
-            <Image
-              src="/wordmark.png"
-              alt="GlownUp"
-              width={220}
-              height={44}
-              priority
-              className="h-10 w-auto object-contain brightness-0"
-            />
-          </div>
           <h1 className="text-4xl font-semibold tracking-tight">Upload your photo</h1>
           <p className="mt-3 text-base text-gray-600">
-            Upload a photo and crop it to frame your upper body.
-          </p>
-          <p className="mt-3 text-base text-gray-600">
-            Best results: clear, front-facing photo with good lighting.
+            Visit the{" "}
+            <a
+              href="/instructions"
+              className="font-medium text-black underline underline-offset-4 hover:text-gray-700"
+            >
+              Tips page
+            </a>{" "}
+            for best results.
           </p>
         </div>
 

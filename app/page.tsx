@@ -32,10 +32,10 @@ export default function Home() {
             Try GlownUp
           </Link>
           <Link
-            href="/upload"
+            href="/instructions"
             className="rounded-full border border-gray-300 px-6 py-3 text-black transition hover:bg-gray-100"
           >
-            See Example
+            Tips & Instructions
           </Link>
         </div>
       </section>
