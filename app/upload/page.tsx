@@ -9,9 +9,9 @@ import { supabase } from "@/lib/supabase";
 import { track } from "@vercel/analytics";
 
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
-const CROP_ASPECT_RATIO = 4 / 5;
+const CROP_ASPECT_RATIO = 3 / 4;
 const CROP_OUTPUT_WIDTH = 1080;
-const CROP_OUTPUT_HEIGHT = 1350;
+const CROP_OUTPUT_HEIGHT = 1440;
 
 const ALLOWED_FILE_TYPES = [
   "image/jpeg",

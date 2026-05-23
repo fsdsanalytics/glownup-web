@@ -272,6 +272,42 @@ export default function ResultPage({ params }: ResultPageProps) {
     });
   };
 
+  const handleDownloadPhotoOnly = async () => {
+    if (!data?.generated_image_url) return;
+
+    const response = await fetch(data.generated_image_url);
+    const blob = await response.blob();
+    const file = new File([blob], "glownup-photo.jpg", { type: "image/jpeg" });
+    const objectUrl = URL.createObjectURL(blob);
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "GlownUp transformation",
+        });
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") throw error;
+      }
+    } else {
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = "glownup-photo.jpg";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    URL.revokeObjectURL(objectUrl);
+
+    track("photo_only_downloaded", {
+      glowUpLevel: data?.glow_up_level,
+      transformationId: data?.id,
+    });
+  };
+
   const handleSubmitFeedback = async () => {
     if (!data?.id || !feedback.trim()) return;
 
@@ -431,31 +467,40 @@ export default function ResultPage({ params }: ResultPageProps) {
           )}
         </div>
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row">
+            {data.generated_image_url && exportedCardUrl && (
+              <>
+                <button
+                  onClick={handleDownload}
+                  className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+                >
+                  Save Transformation
+                </button>
+
+                <button
+                  onClick={handleDownloadPhotoOnly}
+                  className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+                >
+                  Save Photo
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={handleCopyLink}
+              className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
+            >
+              Copy Link
+            </button>
+          </div>
+
           <Link
             href="/upload"
-            className="inline-flex items-center justify-center rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+            className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
           >
-            Try another
+            Try Again
           </Link>
-
-          {data.generated_image_url && exportedCardUrl && (
-            <>
-              <button
-                onClick={handleDownload}
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
-              >
-                Download
-              </button>
-
-              <button
-                onClick={handleCopyLink}
-                className="inline-flex items-center justify-center rounded-full border border-gray-300 px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100"
-              >
-                Copy link
-              </button>
-            </>
-          )}
         </div>
 
         {data.generated_image_url && (
