@@ -418,7 +418,7 @@ export default function UploadPage() {
 
           {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
           <p className="mt-6 text-center text-xs text-gray-500">
-            Contact: fsdsanalytics@gmail.com
+            Contact: hello@glownup.app
           </p>
         </div>
       </div>

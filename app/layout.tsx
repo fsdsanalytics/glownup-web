@@ -129,7 +129,7 @@ export default function RootLayout({
               Terms
             </a>
 
-            <a href="mailto:fsdsanalytics@gmail.com" className="hover:text-black">
+            <a href="mailto:hello@glownup.app" className="hover:text-black">
               Contact
             </a>
           </div>
