@@ -415,6 +415,9 @@ export default function UploadPage() {
           <p className="mt-2 text-center text-xs text-gray-500">
             By uploading a photo, you confirm you are 18+ and have the right to use the image.
           </p>
+          <p className="mt-2 text-center text-xs text-gray-500">
+            Free preview is limited to 3 generations per day.
+          </p>
 
           {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
           <p className="mt-6 text-center text-xs text-gray-500">

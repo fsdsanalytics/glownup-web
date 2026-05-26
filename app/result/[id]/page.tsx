@@ -42,6 +42,7 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [exportingCard, setExportingCard] = useState(false);
   const [completedEventTracked, setCompletedEventTracked] = useState(false);
   const [failedEventTracked, setFailedEventTracked] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const getSessionId = () => {
     if (typeof window === "undefined") return null;
@@ -397,7 +398,11 @@ export default function ResultPage({ params }: ResultPageProps) {
       );
       setLoading(false);
 
-      if (transformation.status !== "pending" && transformation.status !== "generating") {
+      if (
+        transformation.status !== "pending" &&
+        transformation.status !== "generating" &&
+        transformation.status !== "retrying"
+      ) {
         if (intervalId) clearInterval(intervalId);
       }
     };
@@ -413,6 +418,25 @@ export default function ResultPage({ params }: ResultPageProps) {
       if (intervalId) clearInterval(intervalId);
     };
   }, [id]);
+
+  useEffect(() => {
+  if (
+    !data ||
+    (data.status !== "pending" &&
+      data.status !== "generating" &&
+      data.status !== "retrying")
+  ) {
+    return;
+  }
+
+  setElapsedSeconds(0);
+
+  const timerId = setInterval(() => {
+    setElapsedSeconds((seconds) => seconds + 1);
+  }, 1000);
+
+  return () => clearInterval(timerId);
+}, [data?.id, data?.status]);
 
   useEffect(() => {
     void trackEvent({
@@ -492,7 +516,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   }
 
   const glowUpLabel = glowUpLabels[data.glow_up_level] || data.glow_up_level;
-  const isGenerating = data.status === "pending" || data.status === "generating";
+  const isGenerating =
+    data.status === "pending" || data.status === "generating" || data.status === "retrying";
 
   return (
     <main className="bg-white px-6 py-12 text-black">
@@ -527,8 +552,18 @@ export default function ResultPage({ params }: ResultPageProps) {
                     <span className="h-2.5 w-2.5 animate-bounce rounded-full bg-black" />
                   </div>
 
-                  <p className="mt-4 text-sm text-gray-600">
-                    This usually takes 15–45 seconds.
+                  {data.status === "retrying" ? (
+                    <p className="mt-4 text-sm text-gray-600">
+                      Still working — we’re retrying with a backup model. This usually takes about a minute, but times can vary.
+                    </p>
+                  ) : (
+                    <p className="mt-4 text-sm text-gray-600">
+                      This usually takes about a minute, but times can vary.
+                    </p>
+                  )}
+
+                  <p className="mt-2 text-xs text-gray-500">
+                    Elapsed time: {elapsedSeconds}s
                   </p>
                 </div>
               ) : (

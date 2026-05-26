@@ -55,20 +55,50 @@ export async function POST(req: Request) {
 
     const prompt = getGlowUpPrompt(transformation.glow_up_level);
 
-    const output = await replicate.run(
-      "black-forest-labs/flux-kontext-max",
-      {
-        input: {
-          prompt,
-          input_image: transformation.original_image_url,
-          output_format: "jpg",
-          aspect_ratio: "match_input_image",
-          output_quality: 90,
-          guidance: 2.5,
-          num_inference_steps: 30,
-        },
-      }
-    );
+    let output;
+
+    try {
+      output = await replicate.run(
+        "openai/gpt-image-2",
+        {
+          input: {
+            prompt,
+            input_images: [transformation.original_image_url],
+            aspect_ratio: "2:3",
+            quality: "medium",
+            number_of_images: 1,
+            output_format: "jpeg",
+            background: "opaque",
+            moderation: "low",
+          },
+        }
+      );
+    } catch (primaryError) {
+      console.warn("GPT Image 2 generation failed. Falling back to Flux Kontext Max:", primaryError);
+
+      await supabase
+        .from("transformations")
+        .update({
+          status: "retrying",
+          error_message: "Primary generation failed. Retrying with fallback model.",
+        })
+        .eq("id", currentTransformationId);
+
+      output = await replicate.run(
+        "black-forest-labs/flux-kontext-max",
+        {
+          input: {
+            prompt,
+            input_image: transformation.original_image_url,
+            output_format: "jpg",
+            aspect_ratio: "match_input_image",
+            output_quality: 90,
+            guidance: 2.5,
+            num_inference_steps: 30,
+          },
+        }
+      );
+    }
 
     let generatedImageUrl = "";
 
