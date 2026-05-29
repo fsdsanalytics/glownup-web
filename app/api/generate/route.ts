@@ -10,6 +10,9 @@ const replicate = new Replicate({
 
 export async function POST(req: Request) {
   let currentTransformationId: string | undefined;
+  const forwardedFor = req.headers.get("x-forwarded-for");
+  const ipAddress = forwardedFor?.split(",")[0]?.trim() || null;
+  const userAgent = req.headers.get("user-agent") || null;
 
   try {
     const { transformationId } = await req.json();
@@ -46,7 +49,12 @@ export async function POST(req: Request) {
 
     const { error: generatingError } = await supabase
       .from("transformations")
-      .update({ status: "generating", error_message: null })
+      .update({
+        status: "generating",
+        error_message: null,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+      })
       .eq("id", currentTransformationId);
 
     if (generatingError) {
