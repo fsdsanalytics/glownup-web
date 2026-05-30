@@ -351,20 +351,37 @@ export default function ResultPage({ params }: ResultPageProps) {
     setSubmittingFeedback(true);
     setFeedbackMessage("");
 
-    const { error } = await supabase
-      .from("transformations")
-      .update({ feedback_text: feedback.trim() })
-      .eq("id", data.id);
+  try {
+    const response = await fetch("/api/feedback", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        transformationId: data.id,
+        feedback: feedback.trim(),
+      }),
+    });
 
-    if (error) {
-      setFeedbackMessage("Could not save feedback. Please try again.");
-      setSubmittingFeedback(false);
-      return;
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result?.error || "Could not save feedback");
     }
 
-    setData({ ...data, feedback_text: feedback.trim() });
+    const savedFeedback = result.feedback_text || feedback.trim();
+
+    setData({ ...data, feedback_text: savedFeedback });
+    setFeedback(savedFeedback);
     setFeedbackMessage("Thanks — your feedback was saved.");
+  } catch (error) {
+    console.error("Feedback submit failed:", error);
+    setFeedbackMessage("Could not save feedback. Please try again.");
     setSubmittingFeedback(false);
+    return;
+  }
+
+  setSubmittingFeedback(false);
 
     void trackEvent({
       eventName: "feedback_submitted",
@@ -377,32 +394,44 @@ export default function ResultPage({ params }: ResultPageProps) {
     let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const fetchTransformation = async () => {
-      const { data: transformation, error } = await supabase
-        .from("transformations")
-        .select("id, original_image_url, generated_image_url, glow_up_level, status, feedback_text")
-        .eq("id", id)
-        .single();
+      try {
+        const response = await fetch(`/api/transformations/${id}`, {
+          cache: "no-store",
+        });
 
-      if (!isMounted) return;
+        const result = await response.json();
 
-      if (error || !transformation) {
+        if (!isMounted) return;
+
+        if (!response.ok || !result.transformation) {
+          setNotFound(true);
+          setLoading(false);
+          if (intervalId) clearInterval(intervalId);
+          return;
+        }
+
+        const transformation = result.transformation as Transformation;
+
+        setData(transformation);
+        setFeedback((currentFeedback) =>
+          currentFeedback ? currentFeedback : transformation.feedback_text ?? ""
+        );
+        setLoading(false);
+
+        if (
+          transformation.status !== "pending" &&
+          transformation.status !== "generating" &&
+          transformation.status !== "retrying"
+        ) {
+          if (intervalId) clearInterval(intervalId);
+        }
+      } catch (error) {
+        console.error("Could not fetch transformation:", error);
+
+        if (!isMounted) return;
+
         setNotFound(true);
         setLoading(false);
-        if (intervalId) clearInterval(intervalId);
-        return;
-      }
-
-      setData(transformation);
-      setFeedback((currentFeedback) =>
-        currentFeedback ? currentFeedback : transformation.feedback_text ?? ""
-      );
-      setLoading(false);
-
-      if (
-        transformation.status !== "pending" &&
-        transformation.status !== "generating" &&
-        transformation.status !== "retrying"
-      ) {
         if (intervalId) clearInterval(intervalId);
       }
     };

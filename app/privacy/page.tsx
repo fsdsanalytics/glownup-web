@@ -22,6 +22,12 @@ export default function PrivacyPage() {
           By using this service, you agree that uploaded images may be processed
           by third-party AI providers to generate results.
         </p>
+        
+        <p className="mb-4">
+          We may collect technical information such as IP addresses, browser
+          information, device information, and usage analytics for security,
+          abuse prevention, troubleshooting, and service improvement.
+        </p>
   
         <p className="mt-8 text-sm text-neutral-500">
           Last updated: 2026

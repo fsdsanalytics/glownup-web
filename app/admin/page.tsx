@@ -18,6 +18,15 @@ type EventRow = {
   metadata: Record<string, unknown> | null;
 };
 
+type TransformationRow = {
+  id: string;
+  created_at: string;
+  status: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  session_id: string | null;
+};
+
 async function unlockAnalytics(formData: FormData) {
   "use server";
 
@@ -94,15 +103,34 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     .order("created_at", { ascending: false })
     .limit(500);
 
+  const { data: transformations = [], error: transformationsError } = await supabaseAdmin
+    .from("transformations")
+    .select("id, created_at, status, ip_address, user_agent, session_id")
+    .gte("created_at", startDate.toISOString())
+    .order("created_at", { ascending: false })
+    .limit(500);
+
   const rows = (events || []) as EventRow[];
+  const transformationRows = (transformations || []) as TransformationRow[];
 
   const uniqueSessions = new Set(rows.map((event) => event.session_id).filter(Boolean)).size;
+
+  const uniqueIps = new Set(
+    transformationRows.map((transformation) => transformation.ip_address).filter(Boolean)
+  ).size;
+
+  const uniqueUserAgents = new Set(
+    transformationRows.map((transformation) => transformation.user_agent).filter(Boolean)
+  ).size;
 
   const count = (name: string) =>
     rows.filter((event) => event.event_name === name).length;
 
   const metrics = [
     ["Sessions", uniqueSessions],
+    ["Unique IPs", uniqueIps],
+    ["User agents", uniqueUserAgents],
+    ["Transformations", transformationRows.length],
     ["Page visits", count("page_visit")],
     ["Uploads started", count("upload_started")],
     ["Uploads completed", count("upload_completed")],
@@ -123,6 +151,32 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       return map;
     }, new Map<string, EventRow[]>())
   ).slice(0, 20);
+
+  const groupedIps = Array.from(
+    transformationRows.reduce((map, transformation) => {
+      const ip = transformation.ip_address || "Unknown";
+      const existing = map.get(ip) || {
+        ip,
+        count: 0,
+        latest: transformation.created_at,
+        userAgents: new Set<string>(),
+      };
+
+      existing.count += 1;
+      if (new Date(transformation.created_at) > new Date(existing.latest)) {
+        existing.latest = transformation.created_at;
+      }
+      if (transformation.user_agent) {
+        existing.userAgents.add(transformation.user_agent);
+      }
+
+      map.set(ip, existing);
+      return map;
+    }, new Map<string, { ip: string; count: number; latest: string; userAgents: Set<string> }>())
+  )
+    .map(([, value]) => value)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 20);
 
   return (
     <main className="min-h-screen bg-white px-6 py-12 text-black">
@@ -160,6 +214,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
           </div>
         )}
 
+        {transformationsError && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            Could not load transformations: {transformationsError.message}
+          </div>
+        )}
+
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {metrics.map(([label, value]) => (
             <div key={label} className="rounded-2xl border border-gray-200 p-4">
@@ -167,6 +227,39 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
               <p className="mt-2 text-3xl font-semibold">{value}</p>
             </div>
           ))}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-2xl font-semibold">Top IP addresses</h2>
+
+          <div className="mt-4 overflow-x-auto rounded-2xl border border-gray-200">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-gray-50 text-gray-600">
+                <tr>
+                  <th className="px-4 py-3">IP address</th>
+                  <th className="px-4 py-3">Generations</th>
+                  <th className="px-4 py-3">Unique devices</th>
+                  <th className="px-4 py-3">Latest activity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupedIps.map((item) => (
+                  <tr key={item.ip} className="border-t border-gray-100">
+                    <td className="whitespace-nowrap px-4 py-3 font-medium">
+                      {item.ip}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{item.count}</td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {item.userAgents.size}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-gray-600">
+                      {new Date(item.latest).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </section>
 
         <section className="mt-10">
@@ -181,6 +274,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                   <th className="px-4 py-3">Session</th>
                   <th className="px-4 py-3">Transformation</th>
                   <th className="px-4 py-3">Path</th>
+                  <th className="px-4 py-3">Metadata</th>
                 </tr>
               </thead>
               <tbody>
@@ -198,6 +292,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {event.page_path || "—"}
+                    </td>
+                    <td className="max-w-[240px] truncate px-4 py-3 text-gray-600">
+                      {event.metadata ? JSON.stringify(event.metadata) : "—"}
                     </td>
                   </tr>
                 ))}

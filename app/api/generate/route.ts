@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { getGlowUpPrompt } from "@/lib/prompts/glow-up-prompts";
 import { track } from "@vercel/analytics/server";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+    },
+  }
+);
 
 export async function POST(req: Request) {
   let currentTransformationId: string | undefined;
@@ -26,7 +36,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { data: transformation, error: fetchError } = await supabase
+    const { data: transformation, error: fetchError } = await supabaseAdmin
       .from("transformations")
       .select("*")
       .eq("id", currentTransformationId)
@@ -47,7 +57,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Already generating" });
     }
 
-    const { error: generatingError } = await supabase
+    const { count: dailyGenerationCount, error: countError } = await supabaseAdmin
+      .from("transformations")
+      .select("*", { count: "exact", head: true })
+      .eq("session_id", transformation.session_id);
+
+    if (countError) {
+      throw countError;
+    }
+
+    if ((dailyGenerationCount || 0) > 3) {
+      await supabaseAdmin
+        .from("transformations")
+        .update({
+          status: "failed",
+          error_message: "Free generation limit reached for today.",
+        })
+        .eq("id", currentTransformationId);
+
+      return NextResponse.json(
+        { error: "Free generation limit reached for today." },
+        { status: 429 }
+      );
+    }
+
+    const { error: generatingError } = await supabaseAdmin
       .from("transformations")
       .update({
         status: "generating",
@@ -84,7 +118,7 @@ export async function POST(req: Request) {
     } catch (primaryError) {
       console.warn("GPT Image 2 generation failed. Falling back to Flux Kontext Max:", primaryError);
 
-      await supabase
+      await supabaseAdmin
         .from("transformations")
         .update({
           status: "retrying",
@@ -147,7 +181,7 @@ export async function POST(req: Request) {
     const imageBlob = await imageResponse.blob();
     const fileName = `${transformation.session_id}/${transformation.id}.jpg`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabaseAdmin.storage
       .from("generated-outputs")
       .upload(fileName, imageBlob, {
         contentType: "image/jpeg",
@@ -158,13 +192,13 @@ export async function POST(req: Request) {
       throw uploadError;
     }
 
-    const { data: publicUrlData } = supabase.storage
+    const { data: publicUrlData } = supabaseAdmin.storage
       .from("generated-outputs")
       .getPublicUrl(fileName);
 
     const finalGeneratedUrl = publicUrlData.publicUrl;
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("transformations")
       .update({
         generated_image_url: finalGeneratedUrl,
@@ -193,7 +227,7 @@ export async function POST(req: Request) {
       error instanceof Error ? error.message : "Unknown error";
 
     if (currentTransformationId) {
-      await supabase
+      await supabaseAdmin
         .from("transformations")
         .update({ status: "failed", error_message: message })
         .eq("id", currentTransformationId);

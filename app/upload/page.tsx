@@ -233,22 +233,29 @@ export default function UploadPage() {
 
     try {
       const sessionId = getSessionId();
+      const transformationId = crypto.randomUUID();
 
-      const { count, error: countError } = await supabase
-        .from("transformations")
-        .select("*", { count: "exact", head: true })
-        .eq("session_id", sessionId);
+      const limitResponse = await fetch("/api/generation-limit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+      });
 
-      if (countError) {
-        throw countError;
-      }
+      if (!limitResponse.ok) {
+        const limitData = await limitResponse.json().catch(() => null);
 
-      if ((count || 0) >= 3) {
         void trackEvent({
           eventName: "generation_limit_reached",
           metadata: { limit: 3 },
         });
-        setMessage("Free generation limit reached for today. Come back tomorrow to generate more.");
+
+        setMessage(
+          limitData?.message ||
+            limitData?.error ||
+            "Free generation limit reached for today. Come back tomorrow to generate more."
+        );
         setUploading(false);
         return;
       }
@@ -270,17 +277,16 @@ export default function UploadPage() {
 
       const originalImageUrl = publicUrlData.publicUrl;
 
-      const { data: insertData, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from("transformations")
         .insert({
+          id: transformationId,
           session_id: sessionId,
           original_image_url: originalImageUrl,
           glow_up_level: "lean",
           status: "pending",
           is_free_generation: true,
-        })
-        .select("id")
-        .single();
+        });
 
       if (insertError) {
         throw insertError;
@@ -288,12 +294,12 @@ export default function UploadPage() {
 
       void trackEvent({
         eventName: "upload_completed",
-        transformationId: insertData.id,
+        transformationId: transformationId,
       });
 
       void trackEvent({
         eventName: "generation_started",
-        transformationId: insertData.id,
+        transformationId: transformationId,
       });
 
       void fetch("/api/generate", {
@@ -302,13 +308,13 @@ export default function UploadPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          transformationId: insertData.id,
+          transformationId: transformationId,
         }),
       }).catch((generationError) => {
         console.error("Generation request failed:", generationError);
       });
 
-      router.push(`/result/${insertData.id}`);
+      router.push(`/result/${transformationId}`);
     } catch (error) {
       console.error(error);
       void trackEvent({
@@ -419,7 +425,7 @@ export default function UploadPage() {
             Free preview is limited to 3 generations per day.
           </p>
 
-          {message && <p className="mt-4 text-sm text-red-600">{message}</p>}
+          {message && <p className="mt-4 text-center text-sm text-red-600">{message}</p>}
           <p className="mt-6 text-center text-xs text-gray-500">
             Contact: hello@glownup.app
           </p>
