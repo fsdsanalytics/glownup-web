@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
   const { data, error } = await supabaseAdmin
     .from("transformations")
     .select(
-      "id, original_image_url, generated_image_url, glow_up_level, status, feedback_text"
+      "id, original_image_url, generated_image_url, glow_up_level, status, feedback_text, error_message"
     )
     .eq("id", id)
     .single();

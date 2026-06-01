@@ -5,7 +5,7 @@ import { getGlowUpPrompt } from "@/lib/prompts/glow-up-prompts";
 import { track } from "@vercel/analytics/server";
 
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-const RATE_LIMIT_MAX = 2;
+const RATE_LIMIT_MAX = 10;
 
 const ipHits = new Map<string, { count: number; resetAt: number }>();
 
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
     const rateLimit = checkIpRateLimit(ip);
 
     if (!rateLimit.allowed) {
-      const message = "Too many generations. Please try again later.";
+      const message = "Too many generations were requested from this connection. Please try again later.";
 
       await supabaseAdmin
         .from("transformations")
@@ -289,8 +289,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error(error);
 
-    const message =
-      error instanceof Error ? error.message : "Unknown error";
+    const message = getGenerationErrorMessage(error);
 
     if (currentTransformationId) {
       await supabaseAdmin
@@ -301,4 +300,29 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function getGenerationErrorMessage(error: unknown) {
+  const rawMessage = error instanceof Error ? error.message : String(error);
+  const lowerMessage = rawMessage.toLowerCase();
+
+  if (
+    lowerMessage.includes("sensitive") ||
+    lowerMessage.includes("flagged") ||
+    lowerMessage.includes("e005") ||
+    lowerMessage.includes("moderation")
+  ) {
+    return "This image could not be processed because it did not meet our image guidelines.";
+  }
+
+  if (
+    lowerMessage.includes("rate limit") ||
+    lowerMessage.includes("too many requests") ||
+    lowerMessage.includes("429") ||
+    lowerMessage.includes("throttled")
+  ) {
+    return "Too many generations were requested from this connection. Please try again later.";
+  }
+
+  return "Generation failed due to a temporary issue. Please try another photo or try again later.";
 }

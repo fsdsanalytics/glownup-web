@@ -609,8 +609,18 @@ export default function ResultPage({ params }: ResultPageProps) {
                     </p>
                     <p className="mt-3 text-sm text-gray-600">
                       {data.error_message ||
-                        "This image couldn’t be processed. Please try another photo."}
+                        "This image couldn't be processed. Try another photo, or try again later. If the issue persists, contact us."}
                     </p>
+
+                    {data.error_message?.includes("guidelines") && (
+                      <p className="mt-2 text-sm text-gray-600">
+                        Please review our{" "}
+                        <Link href="/tips" className="underline hover:text-black">
+                          Tips page
+                        </Link>{" "}
+                        for supported images and try again.
+                      </p>
+                    )}
                     <Link
                       href="/upload"
                       className="mt-6 inline-flex rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
