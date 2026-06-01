@@ -17,6 +17,7 @@ type Transformation = {
   glow_up_level: string;
   status: string;
   feedback_text?: string | null;
+  error_message?: string | null;
 };
 
 const glowUpLabels: Record<string, string> = {
@@ -601,7 +602,25 @@ export default function ResultPage({ params }: ResultPageProps) {
                   </p>
                 </div>
               ) : (
-                "Your transformation is not available yet."
+                data.status === "failed" ? (
+                  <div className="text-center">
+                    <p className="text-base font-medium text-black">
+                      We couldn&apos;t generate this transformation.
+                    </p>
+                    <p className="mt-3 text-sm text-gray-600">
+                      {data.error_message ||
+                        "This image couldn’t be processed. Please try another photo."}
+                    </p>
+                    <Link
+                      href="/upload"
+                      className="mt-6 inline-flex rounded-full bg-black px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
+                    >
+                      Try another photo
+                    </Link>
+                  </div>
+                ) : (
+                  "Your transformation is not available yet."
+                )
               )}
             </div>
           )}

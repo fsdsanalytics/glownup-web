@@ -4,6 +4,49 @@ import { createClient } from "@supabase/supabase-js";
 import { getGlowUpPrompt } from "@/lib/prompts/glow-up-prompts";
 import { track } from "@vercel/analytics/server";
 
+const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+const RATE_LIMIT_MAX = 2;
+
+const ipHits = new Map<string, { count: number; resetAt: number }>();
+
+function getClientIp(req: Request) {
+  return (
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown"
+  );
+}
+
+function isBypassedIp(ip: string) {
+  //const bypassIps = process.env.RATE_LIMIT_BYPASS_IPS?.split(",").map((x) => x.trim()) || [];
+
+  return (
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "unknown"
+    //bypassIps.includes(ip)
+  );
+}
+
+function checkIpRateLimit(ip: string) {
+  if (isBypassedIp(ip)) return { allowed: true };
+
+  const now = Date.now();
+  const existing = ipHits.get(ip);
+
+  if (!existing || existing.resetAt < now) {
+    ipHits.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+
+  if (existing.count >= RATE_LIMIT_MAX) {
+    return { allowed: false };
+  }
+
+  existing.count += 1;
+  return { allowed: true };
+}
+
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
@@ -19,6 +62,7 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: Request) {
+
   let currentTransformationId: string | undefined;
   const forwardedFor = req.headers.get("x-forwarded-for");
   const ipAddress = forwardedFor?.split(",")[0]?.trim() || null;
@@ -33,6 +77,28 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Missing transformationId" },
         { status: 400 }
+      );
+    }
+
+    const ip = getClientIp(req);
+    const rateLimit = checkIpRateLimit(ip);
+
+    if (!rateLimit.allowed) {
+      const message = "Too many generations. Please try again later.";
+
+      await supabaseAdmin
+        .from("transformations")
+        .update({
+          status: "failed",
+          error_message: message,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        })
+        .eq("id", currentTransformationId);
+
+      return NextResponse.json(
+        { error: message },
+        { status: 429 }
       );
     }
 
