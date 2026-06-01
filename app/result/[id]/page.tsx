@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { use, useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
 
 type ResultPageProps = {
   params: Promise<{
@@ -59,12 +58,18 @@ export default function ResultPage({ params }: ResultPageProps) {
     metadata?: Record<string, unknown>;
   }) => {
     try {
-      await supabase.from("events").insert({
-        event_name: eventName,
-        session_id: getSessionId(),
-        transformation_id: transformationId,
-        page_path: window.location.pathname,
-        metadata,
+      await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event_name: eventName,
+          session_id: getSessionId(),
+          transformation_id: transformationId,
+          page_path: window.location.pathname,
+          metadata,
+        }),
       });
     } catch (error) {
       console.error("Analytics event failed:", error);

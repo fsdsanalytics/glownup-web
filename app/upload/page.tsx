@@ -117,12 +117,18 @@ export default function UploadPage() {
     metadata?: Record<string, unknown>;
   }) => {
     try {
-      await supabase.from("events").insert({
-        event_name: eventName,
-        session_id: getSessionId(),
-        transformation_id: transformationId,
-        page_path: window.location.pathname,
-        metadata,
+      await fetch("/api/events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event_name: eventName,
+          session_id: getSessionId(),
+          transformation_id: transformationId,
+          page_path: window.location.pathname,
+          metadata,
+        }),
       });
     } catch (error) {
       console.error("Analytics event failed:", error);
@@ -277,19 +283,26 @@ export default function UploadPage() {
 
       const originalImageUrl = publicUrlData.publicUrl;
 
-      const { error: insertError } = await supabase
-        .from("transformations")
-        .insert({
+      const transformationResponse = await fetch("/api/transformations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
           id: transformationId,
           session_id: sessionId,
           original_image_url: originalImageUrl,
           glow_up_level: "lean",
           status: "pending",
           is_free_generation: true,
-        });
+        }),
+      });
 
-      if (insertError) {
-        throw insertError;
+      if (!transformationResponse.ok) {
+        const transformationData = await transformationResponse.json().catch(() => null);
+        throw new Error(
+          transformationData?.error || "Failed to create transformation."
+        );
       }
 
       void trackEvent({
