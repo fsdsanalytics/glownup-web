@@ -10,8 +10,48 @@ export default function InstructionsPage() {
           </h1>
 
           <p className="mt-4 text-lg text-gray-600">
-            Small changes in your photo can make a huge difference in your
-            transformation.
+            The best results come from clear, well-lit photos. Review the examples below before uploading.
+          </p>
+        </div>
+
+        <div className="mb-12 rounded-2xl border border-gray-200 p-6">
+          <h2 className="mb-4 text-2xl font-semibold">Example Photos</h2>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <h3 className="mb-3 font-medium text-green-700">✓ Works Best</h3>
+              <img
+                src="/example_1.png"
+                alt="Examples of photos that work well"
+                className="w-full rounded-xl border border-gray-200"
+              />
+              <ul className="mt-3 space-y-1 text-sm text-gray-700">
+                <li>• Front-facing upper body</li>
+                <li>• Good lighting</li>
+                <li>• Fitted shirt, athletic wear, or sports bra</li>
+                <li>• Shoulders and torso clearly visible</li>
+                <li>• Simple background with minimal distractions</li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="mb-3 font-medium text-red-700">✕ May Not Work Well</h3>
+              <img
+                src="/example_2.png"
+                alt="Examples of photos that may not work well"
+                className="w-full rounded-xl border border-gray-200"
+              />
+              <ul className="mt-3 space-y-1 text-sm text-gray-700">
+                <li>• Very dark photos</li>
+                <li>• Heavy layering or baggy clothing</li>
+                <li>• Side profiles</li>
+                <li>• Extreme crops or distant full-body shots</li>
+                <li>• Underwear, bikini bottoms, or highly revealing images</li>
+              </ul>
+            </div>
+          </div>
+          <p className="mt-4 text-center text-sm text-gray-500">
+            See the detailed guidance below for additional tips and image guidelines.
           </p>
         </div>
 
@@ -54,26 +94,38 @@ export default function InstructionsPage() {
 
           <section>
             <h2 className="text-2xl font-semibold">
-              4. Avoid baggy clothing
+              4. Fitted clothing works best
             </h2>
 
             <p className="mt-3 text-gray-700 leading-7">
-              Loose hoodies, oversized jackets, and heavy layering can make it
-              harder for the AI to generate accurate body transformations.
+              Fitted shirts, athletic wear, and sports bras generally produce the most accurate transformations. Baggy clothing, hoodies, oversized jackets, and heavy layering can reduce quality.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold">
-              5. AI generations are not perfect
+              5. Image Guidelines
             </h2>
 
             <p className="mt-3 text-gray-700 leading-7">
-              GlownUp uses AI-generated transformations. Some generations may
-              occasionally produce visual inconsistencies or unrealistic
-              details.
+              You must be 18 or older to use GlownUp. Nudity is not permitted. Shirtless photos and sports bras are allowed, but underwear, bikini bottoms, and other highly revealing images may be moderated and rejected by AI safety systems.
+              Some images may not be supported due to image quality or AI safety systems.
             </p>
           </section>
+
+          <section>
+            <h2 className="text-2xl font-semibold">
+              6. AI generations are not perfect
+            </h2>
+
+            <p className="mt-3 text-gray-700 leading-7">
+              GlownUp creates AI-simulated body transformations for entertainment and visualization purposes. Results may contain visual inconsistencies and should not be considered a prediction or guarantee of future appearance.
+            </p>
+          </section>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            GlownUp is actively being improved. We continue to refine image generation quality, moderation systems, and supported photo types to improve results over time.
+          </div>
         </div>
 
         <div className="mt-14 flex justify-center">
