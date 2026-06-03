@@ -16,8 +16,8 @@ const ALLOWED_FILE_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/heic",
   "image/heif",
+  "image/heic"
 ];
 
 const ALLOWED_FILE_EXTENSIONS = [
@@ -25,8 +25,8 @@ const ALLOWED_FILE_EXTENSIONS = [
   "jpeg",
   "png",
   "webp",
-  "heic",
   "heif",
+  "heic",
 ];
 
 const isValidImageFile = (file: File) => {
@@ -170,7 +170,7 @@ export default function UploadPage() {
       setSourceImageUrl(null);
       setPreviewUrl(null);
       setCropEditorOpen(false);
-      setMessage("Please upload a JPG, PNG, WebP, or HEIC image.");
+      setMessage("Please upload a JPG, PNG, WebP, or HEIF image. If your iPhone photo is HEIC, upload a screenshot instead.");
       return;
     }
 
@@ -223,7 +223,7 @@ export default function UploadPage() {
     }
 
     if (!isValidImageFile(file)) {
-      setMessage("Please upload a JPG, PNG, WebP, or HEIC image.");
+      setMessage("Please upload a JPG, PNG, WebP, or HEIF image. If your iPhone photo is HEIC, upload a screenshot instead.");
       return;
     }
 
@@ -387,6 +387,10 @@ export default function UploadPage() {
                   onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
                 />
               </div>
+
+              <p className="mt-3 rounded-xl bg-white px-3 py-2 text-xs text-gray-600">
+                If your photo appears black here, your file format may not be fully supported. Take a screenshot of the photo and upload the screenshot instead. Some HEIC photos may not display correctly.
+              </p>
 
               <label className="mt-4 block text-sm font-medium text-gray-700">
                 Zoom
